@@ -2,41 +2,70 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* Design system pour l'application d'analyse de loterie.
+Toutes les couleurs DOIVENT être en HSL.
 */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Couleurs de base */
+    --background: 218 25% 6%;
+    --foreground: 210 20% 92%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 220 25% 8%;
+    --card-foreground: 210 20% 92%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 220 25% 8%;
+    --popover-foreground: 210 20% 92%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Palette principale - Bleu professionnel */
+    --primary: 217 91% 60%;
+    --primary-foreground: 210 20% 98%;
+    --primary-glow: 217 91% 70%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 215 25% 15%;
+    --secondary-foreground: 210 20% 92%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 215 25% 12%;
+    --muted-foreground: 217 10% 64%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 262 83% 65%;
+    --accent-foreground: 210 20% 98%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 20% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 215 25% 18%;
+    --input: 215 25% 15%;
+    --ring: 217 91% 60%;
 
-    --radius: 0.5rem;
+    /* Couleurs spécifiques pour les numéros de loterie */
+    --number-1-9: 210 20% 98%;        /* Blanc */
+    --number-10-19: 217 91% 60%;      /* Bleu */
+    --number-20-29: 25 95% 60%;       /* Orange */
+    --number-30-39: 142 76% 45%;      /* Vert */
+    --number-40-49: 48 96% 55%;       /* Jaune */
+    --number-50-59: 320 65% 70%;      /* Rose */
+    --number-60-69: 262 83% 65%;      /* Indigo */
+    --number-70-79: 30 40% 45%;       /* Brun */
+    --number-80-90: 0 84% 60%;        /* Rouge */
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --gradient-accent: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+    --gradient-hero: linear-gradient(135deg, hsl(218 25% 6%), hsl(215 25% 12%));
+    --gradient-card: linear-gradient(135deg, hsl(var(--card)), hsl(215 25% 10%));
+
+    /* Ombres */
+    --shadow-glow: 0 0 30px hsl(var(--primary) / 0.3);
+    --shadow-number: 0 4px 20px hsl(var(--primary) / 0.2);
+    --shadow-card: 0 8px 32px hsl(0 0% 0% / 0.3);
+
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+    --radius: 0.75rem;
 
     --sidebar-background: 0 0% 98%;
 
@@ -101,5 +130,95 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    background: var(--gradient-hero);
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  /* Composant pour les numéros de loterie */
+  .lottery-number {
+    @apply rounded-lg font-bold text-center transition-all duration-300 hover:scale-110;
+    width: 3rem;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-number);
+    transition: var(--transition-smooth);
+  }
+
+  .lottery-number:hover {
+    box-shadow: var(--shadow-glow);
+    transform: translateY(-2px);
+  }
+
+  /* Styles pour chaque plage de numéros */
+  .lottery-number-1-9 {
+    background: hsl(var(--number-1-9));
+    color: hsl(var(--background));
+  }
+
+  .lottery-number-10-19 {
+    background: hsl(var(--number-10-19));
+    color: hsl(var(--primary-foreground));
+  }
+
+  .lottery-number-20-29 {
+    background: hsl(var(--number-20-29));
+    color: hsl(var(--primary-foreground));
+  }
+
+  .lottery-number-30-39 {
+    background: hsl(var(--number-30-39));
+    color: hsl(var(--primary-foreground));
+  }
+
+  .lottery-number-40-49 {
+    background: hsl(var(--number-40-49));
+    color: hsl(var(--background));
+  }
+
+  .lottery-number-50-59 {
+    background: hsl(var(--number-50-59));
+    color: hsl(var(--primary-foreground));
+  }
+
+  .lottery-number-60-69 {
+    background: hsl(var(--number-60-69));
+    color: hsl(var(--primary-foreground));
+  }
+
+  .lottery-number-70-79 {
+    background: hsl(var(--number-70-79));
+    color: hsl(var(--primary-foreground));
+  }
+
+  .lottery-number-80-90 {
+    background: hsl(var(--number-80-90));
+    color: hsl(var(--primary-foreground));
+  }
+
+  /* Card avec gradient */
+  .gradient-card {
+    background: var(--gradient-card);
+    box-shadow: var(--shadow-card);
+    transition: var(--transition-smooth);
+  }
+
+  .gradient-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-glow);
+  }
+
+  /* Bouton hero avec gradient */
+  .btn-hero {
+    background: var(--gradient-accent);
+    transition: var(--transition-bounce);
+  }
+
+  .btn-hero:hover {
+    box-shadow: var(--shadow-glow);
+    transform: translateY(-2px);
   }
 }
