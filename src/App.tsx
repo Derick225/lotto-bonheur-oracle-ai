@@ -7,6 +7,8 @@ import Index from "./pages/Index";
 import { DrawDataPage } from "./pages/DrawDataPage";
 import { DrawStatsPage } from "./pages/DrawStatsPage";
 import { DrawPredictionPage } from "./pages/DrawPredictionPage";
+import { ConsultPage } from "./pages/ConsultPage";
+import { HistoryPage } from "./pages/HistoryPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +24,8 @@ const App = () => (
           <Route path="/draw/:drawName/data" element={<DrawDataPage />} />
           <Route path="/draw/:drawName/stats" element={<DrawStatsPage />} />
           <Route path="/draw/:drawName/prediction" element={<DrawPredictionPage />} />
+          <Route path="/draw/:drawName/consult" element={<ConsultPage />} />
+          <Route path="/draw/:drawName/history" element={<HistoryPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

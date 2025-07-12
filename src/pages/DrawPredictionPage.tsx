@@ -4,13 +4,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { LotteryNumber } from '@/components/LotteryNumber';
+import { LotteryAPIService } from '@/services/lotteryAPI';
+import { PredictionService } from '@/services/predictionService';
 import { ArrowLeft, Brain, Zap, Loader2, TrendingUp } from 'lucide-react';
 
 interface PredictionResult {
   numbers: Array<{ number: number; probability: number }>;
   confidence: number;
-  algorithm: 'XGBoost' | 'RNN-LSTM' | 'Hybrid';
+  algorithm: 'XGBoost' | 'RNN-LSTM' | 'RandomForest' | 'Hybrid';
   features: string[];
+  metadata?: {
+    dataPoints: number;
+    lastUpdate: Date;
+    modelVersion: string;
+  };
 }
 
 export function DrawPredictionPage() {
@@ -25,26 +32,13 @@ export function DrawPredictionPage() {
     try {
       setGenerating(true);
       
-      // Simulation d'une prédiction ML (en attendant l'implémentation réelle)
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Récupérer les données historiques pour la prédiction
+      const results = await LotteryAPIService.getDrawResults(drawName, 100);
       
-      const mockPrediction: PredictionResult = {
-        numbers: Array.from({ length: 5 }, () => ({
-          number: Math.floor(Math.random() * 90) + 1,
-          probability: Math.random() * 0.3 + 0.1
-        })).sort((a, b) => b.probability - a.probability),
-        confidence: Math.random() * 0.3 + 0.7,
-        algorithm: 'Hybrid',
-        features: [
-          'Fréquence historique',
-          'Tendances temporelles',
-          'Corrélations inter-numéros',
-          'Cycles saisonniers',
-          'Patterns séquentiels'
-        ]
-      };
+      // Générer la prédiction avec le service d'IA
+      const predictionResult = await PredictionService.generatePrediction(drawName, results, 'Hybrid');
       
-      setPrediction(mockPrediction);
+      setPrediction(predictionResult);
     } catch (error) {
       console.error('Erreur lors de la génération de la prédiction:', error);
     } finally {
