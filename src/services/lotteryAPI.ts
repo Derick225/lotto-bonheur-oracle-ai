@@ -2,6 +2,7 @@ import axios, { AxiosResponse } from 'axios';
 import { format, parse } from 'date-fns';
 
 export interface DrawResult {
+  id?: number;
   draw_name: string;
   date: string;
   gagnants: number[];

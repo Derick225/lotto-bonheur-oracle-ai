@@ -1,14 +1,17 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, TrendingUp, Calendar, Settings } from "lucide-react";
+import { Sparkles, TrendingUp, Calendar, Settings, Shield } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export function Header() {
+  const navigate = useNavigate();
+
   return (
     <header className="border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/60">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/")}>
               <Sparkles className="h-8 w-8 text-primary" />
               <div>
                 <h1 className="text-2xl font-bold text-foreground">
@@ -30,6 +33,11 @@ export function Header() {
             <Button variant="outline" size="sm" className="gap-2">
               <TrendingUp className="h-4 w-4" />
               Prédictions
+            </Button>
+            
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => navigate("/admin")}>
+              <Shield className="h-4 w-4" />
+              Admin
             </Button>
             
             <Button variant="outline" size="sm" className="gap-2">

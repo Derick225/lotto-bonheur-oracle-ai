@@ -83,6 +83,20 @@ export class IndexedDBService {
       .then(results => results[0]);
   }
 
+  // Nouvelles méthodes pour l'interface administrateur
+  static async addDrawResult(result: Omit<DrawResult, 'id'>): Promise<number> {
+    const id = await db.drawResults.add(result as DrawResult);
+    return typeof id === 'number' ? id : parseInt(id.toString());
+  }
+
+  static async updateDrawResult(id: number, result: Partial<DrawResult>): Promise<void> {
+    await db.drawResults.update(id, result);
+  }
+
+  static async deleteDrawResult(id: number): Promise<void> {
+    await db.drawResults.delete(id);
+  }
+
   // Gestion des prédictions
   static async savePrediction(prediction: Omit<PredictionResult, 'id'>): Promise<number> {
     const id = await db.predictions.add({
