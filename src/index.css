@@ -49,17 +49,25 @@ Toutes les couleurs DOIVENT être en HSL.
     --info: 199 89% 48%;
     --info-foreground: 210 40% 98%;
 
-    /* Couleurs spécifiques pour les numéros de loterie - Version améliorée */
-    --number-1-9: 0 0% 100%;          /* Blanc pur */
-    --number-1-9-text: 222.2 84% 4.9%; /* Texte noir */
-    --number-10-19: 217 91% 60%;      /* Bleu clair */
-    --number-20-29: 142 71% 45%;      /* Vert foncé */
-    --number-30-39: 262 83% 58%;      /* Indigo */
-    --number-40-49: 45 93% 47%;       /* Jaune foncé */
-    --number-50-59: 330 81% 60%;      /* Rose */
-    --number-60-69: 25 95% 53%;       /* Orange */
-    --number-70-79: 220 14% 42%;      /* Gris */
-    --number-80-90: 0 84% 60%;        /* Rouge */
+    /* Couleurs spécifiques pour les numéros de loterie - Selon spécification exacte */
+    --number-1-9: 0 0% 100%;          /* 1-9: Blanc */
+    --number-1-9-text: 222.2 84% 4.9%; /* Texte noir pour contraste */
+    --number-10-19: 217 91% 60%;      /* 10-19: Bleu */
+    --number-10-19-text: 0 0% 100%;   /* Texte blanc */
+    --number-20-29: 25 95% 53%;       /* 20-29: Orange */
+    --number-20-29-text: 0 0% 100%;   /* Texte blanc */
+    --number-30-39: 142 71% 45%;      /* 30-39: Vert */
+    --number-30-39-text: 0 0% 100%;   /* Texte blanc */
+    --number-40-49: 45 93% 47%;       /* 40-49: Jaune */
+    --number-40-49-text: 222.2 84% 4.9%; /* Texte noir pour contraste */
+    --number-50-59: 330 81% 60%;      /* 50-59: Rose */
+    --number-50-59-text: 0 0% 100%;   /* Texte blanc */
+    --number-60-69: 262 83% 58%;      /* 60-69: Indigo */
+    --number-60-69-text: 0 0% 100%;   /* Texte blanc */
+    --number-70-79: 30 25% 35%;       /* 70-79: Brun */
+    --number-70-79-text: 0 0% 100%;   /* Texte blanc */
+    --number-80-90: 0 84% 60%;        /* 80-90: Rouge */
+    --number-80-90-text: 0 0% 100%;   /* Texte blanc */
 
     /* Gradients modernes et sophistiqués */
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary-glow)) 100%);
@@ -209,7 +217,7 @@ Toutes les couleurs DOIVENT être en HSL.
     transform: translateY(-2px);
   }
 
-  /* Styles pour chaque plage de numéros - Améliorés */
+  /* Styles pour chaque plage de numéros - Selon spécification exacte */
   .lottery-number-1-9 {
     background: hsl(var(--number-1-9));
     color: hsl(var(--number-1-9-text));
@@ -218,42 +226,42 @@ Toutes les couleurs DOIVENT être en HSL.
 
   .lottery-number-10-19 {
     background: hsl(var(--number-10-19));
-    color: hsl(var(--primary-foreground));
+    color: hsl(var(--number-10-19-text));
   }
 
   .lottery-number-20-29 {
     background: hsl(var(--number-20-29));
-    color: hsl(var(--primary-foreground));
+    color: hsl(var(--number-20-29-text));
   }
 
   .lottery-number-30-39 {
     background: hsl(var(--number-30-39));
-    color: hsl(var(--primary-foreground));
+    color: hsl(var(--number-30-39-text));
   }
 
   .lottery-number-40-49 {
     background: hsl(var(--number-40-49));
-    color: hsl(var(--foreground));
+    color: hsl(var(--number-40-49-text));
   }
 
   .lottery-number-50-59 {
     background: hsl(var(--number-50-59));
-    color: hsl(var(--primary-foreground));
+    color: hsl(var(--number-50-59-text));
   }
 
   .lottery-number-60-69 {
     background: hsl(var(--number-60-69));
-    color: hsl(var(--primary-foreground));
+    color: hsl(var(--number-60-69-text));
   }
 
   .lottery-number-70-79 {
     background: hsl(var(--number-70-79));
-    color: hsl(var(--primary-foreground));
+    color: hsl(var(--number-70-79-text));
   }
 
   .lottery-number-80-90 {
     background: hsl(var(--number-80-90));
-    color: hsl(var(--primary-foreground));
+    color: hsl(var(--number-80-90-text));
   }
 
   /* Card avec gradient - Améliorée */

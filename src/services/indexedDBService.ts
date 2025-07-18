@@ -1,16 +1,24 @@
 import Dexie, { Table } from 'dexie';
 import { DrawResult } from './lotteryAPI';
 
-// Interface pour les prédictions
+// Interface pour les prédictions améliorée
 export interface PredictionResult {
   id?: number;
   drawName: string;
   date: string;
-  numbers: Array<{ number: number; probability: number }>;
+  numbers: Array<{
+    number: number;
+    probability: number;
+    confidence: number;
+    uncertainty: number;
+    bayesianProbability?: number;
+    features: string[];
+  }>;
   confidence: number;
   algorithm: 'XGBoost' | 'RNN-LSTM' | 'RandomForest' | 'Hybrid';
   features: string[];
   createdAt: Date;
+  metadata?: any;
 }
 
 // Interface pour les statistiques
@@ -57,30 +65,145 @@ export const db = new LotteryDatabase();
 export class IndexedDBService {
   // Gestion des résultats de tirages
   static async saveDrawResults(results: DrawResult[]): Promise<void> {
-    await db.drawResults.bulkPut(results);
+    try {
+      // Filtrer les doublons avant l'insertion
+      const uniqueResults = await this.filterDuplicates(results);
+      if (uniqueResults.length > 0) {
+        await db.drawResults.bulkPut(uniqueResults);
+        console.log(`Sauvegardé ${uniqueResults.length} nouveaux résultats dans IndexedDB`);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde:', error);
+      throw error;
+    }
   }
 
   static async getDrawResults(drawName?: string, limit?: number): Promise<DrawResult[]> {
-    let collection = db.drawResults.orderBy('date').reverse();
-    
-    if (drawName) {
-      collection = collection.filter(result => result.draw_name === drawName);
+    try {
+      let collection = db.drawResults.orderBy('date').reverse();
+
+      if (drawName) {
+        collection = collection.filter(result => result.draw_name === drawName);
+      }
+
+      if (limit) {
+        collection = collection.limit(limit);
+      }
+
+      return collection.toArray();
+    } catch (error) {
+      console.error('Erreur lors de la récupération:', error);
+      return [];
     }
-    
-    if (limit) {
-      collection = collection.limit(limit);
-    }
-    
-    return collection.toArray();
   }
 
   static async getLatestDrawResult(drawName: string): Promise<DrawResult | undefined> {
-    return db.drawResults
-      .where('draw_name')
-      .equals(drawName)
-      .reverse()
-      .sortBy('date')
-      .then(results => results[0]);
+    try {
+      return db.drawResults
+        .where('draw_name')
+        .equals(drawName)
+        .reverse()
+        .sortBy('date')
+        .then(results => results[0]);
+    } catch (error) {
+      console.error('Erreur lors de la récupération du dernier résultat:', error);
+      return undefined;
+    }
+  }
+
+  /**
+   * Filtre les doublons basés sur draw_name et date
+   */
+  private static async filterDuplicates(newResults: DrawResult[]): Promise<DrawResult[]> {
+    const existingKeys = new Set<string>();
+
+    // Récupérer toutes les clés existantes
+    await db.drawResults.each(result => {
+      existingKeys.add(`${result.draw_name}-${result.date}`);
+    });
+
+    // Filtrer les nouveaux résultats
+    return newResults.filter(result => {
+      const key = `${result.draw_name}-${result.date}`;
+      return !existingKeys.has(key);
+    });
+  }
+
+  /**
+   * Synchronise les données avec l'API
+   */
+  static async syncWithAPI(): Promise<{ success: boolean; newCount: number; message?: string }> {
+    try {
+      console.log('Début de la synchronisation avec l\'API...');
+
+      // Importer le service API dynamiquement pour éviter les dépendances circulaires
+      const { LotteryAPIService } = await import('./lotteryAPI');
+
+      // Récupérer les données récentes de l'API
+      const apiResponse = await LotteryAPIService.fetchResults();
+
+      if (!apiResponse.success) {
+        throw new Error(apiResponse.message || 'Échec de la récupération API');
+      }
+
+      // Sauvegarder les nouveaux résultats
+      const initialCount = await db.drawResults.count();
+      await this.saveDrawResults(apiResponse.data);
+      const finalCount = await db.drawResults.count();
+      const newCount = finalCount - initialCount;
+
+      console.log(`Synchronisation terminée: ${newCount} nouveaux résultats`);
+
+      return {
+        success: true,
+        newCount,
+        message: `${newCount} nouveaux résultats synchronisés`
+      };
+    } catch (error) {
+      console.error('Erreur lors de la synchronisation:', error);
+      return {
+        success: false,
+        newCount: 0,
+        message: `Erreur de synchronisation: ${error instanceof Error ? error.message : 'Erreur inconnue'}`
+      };
+    }
+  }
+
+  /**
+   * Synchronise l'historique complet depuis janvier 2024
+   */
+  static async syncHistoricalData(): Promise<{ success: boolean; totalCount: number; message?: string }> {
+    try {
+      console.log('Début de la synchronisation historique...');
+
+      const { LotteryAPIService } = await import('./lotteryAPI');
+
+      // Récupérer l'historique complet
+      const historicalResponse = await LotteryAPIService.fetchHistoricalData(2024);
+
+      if (!historicalResponse.success) {
+        throw new Error(historicalResponse.message || 'Échec de la récupération historique');
+      }
+
+      // Sauvegarder tous les résultats historiques
+      await this.saveDrawResults(historicalResponse.data);
+      const totalCount = await db.drawResults.count();
+
+      console.log(`Synchronisation historique terminée: ${totalCount} résultats au total`);
+
+      return {
+        success: true,
+        totalCount,
+        message: `Historique synchronisé: ${totalCount} résultats au total`
+      };
+    } catch (error) {
+      console.error('Erreur lors de la synchronisation historique:', error);
+      return {
+        success: false,
+        totalCount: 0,
+        message: `Erreur de synchronisation historique: ${error instanceof Error ? error.message : 'Erreur inconnue'}`
+      };
+    }
   }
 
   // Nouvelles méthodes pour l'interface administrateur
@@ -97,13 +220,33 @@ export class IndexedDBService {
     await db.drawResults.delete(id);
   }
 
-  // Gestion des prédictions
-  static async savePrediction(prediction: Omit<PredictionResult, 'id'>): Promise<number> {
-    const id = await db.predictions.add({
-      ...prediction,
-      createdAt: new Date()
-    });
-    return typeof id === 'number' ? id : parseInt(id.toString());
+  // Gestion des prédictions améliorée
+  static async savePrediction(prediction: Omit<PredictionResult, 'id' | 'createdAt'>): Promise<number> {
+    try {
+      const predictionWithDate = {
+        ...prediction,
+        createdAt: new Date()
+      };
+
+      // Supprimer les anciennes prédictions pour ce tirage (garder seulement les 10 dernières)
+      const existingPredictions = await db.predictions
+        .where('drawName')
+        .equals(prediction.drawName)
+        .reverse()
+        .sortBy('createdAt');
+
+      if (existingPredictions.length >= 10) {
+        const toDelete = existingPredictions.slice(10);
+        await db.predictions.bulkDelete(toDelete.map(p => p.id!));
+      }
+
+      const id = await db.predictions.add(predictionWithDate);
+      console.log(`💾 Prédiction sauvegardée pour ${prediction.drawName}`);
+      return typeof id === 'number' ? id : parseInt(id.toString());
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde de la prédiction:', error);
+      throw error;
+    }
   }
 
   static async getLatestPrediction(drawName: string): Promise<PredictionResult | undefined> {

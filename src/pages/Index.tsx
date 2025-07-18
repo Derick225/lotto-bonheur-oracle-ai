@@ -1,10 +1,13 @@
 import { Header } from "@/components/Header";
 import { DrawCard } from "@/components/DrawCard";
 import { StatsCard } from "@/components/StatsCard";
+import { PWAManager } from "@/components/PWAManager";
+import { ColorLegend } from "@/components/LotteryNumber";
 import { DRAW_SCHEDULE, getCurrentDay } from "@/data/drawSchedule";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, Target, Clock, Zap } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TrendingUp, Target, Clock, Zap, Palette, Download } from "lucide-react";
 
 const Index = () => {
   const currentDay = getCurrentDay();
@@ -13,8 +16,10 @@ const Index = () => {
   return (
     <div className="min-h-full">
       {/* Suppression du Header car il est maintenant global */}
-      
+
       <main className="container mx-auto px-6 py-8">
+        {/* Gestionnaire PWA */}
+        <PWAManager className="mb-6" />
         {/* Section Hero */}
         <div className="text-center mb-12">
           <Badge variant="secondary" className="mb-4 bg-accent/20 text-accent-foreground">
@@ -89,6 +94,22 @@ const Index = () => {
             ))}
           </div>
         </div>
+
+        {/* Légende des couleurs */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Palette className="h-5 w-5" />
+              Codage Couleur des Numéros
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ColorLegend />
+            <div className="mt-4 text-sm text-muted-foreground">
+              Chaque numéro est coloré selon sa plage pour faciliter l'identification et l'analyse des patterns.
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Tous les tirages de la semaine */}
         <div>

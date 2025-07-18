@@ -1,12 +1,16 @@
-const CACHE_NAME = 'lotto-oracle-v1.0.0';
+const CACHE_NAME = 'lotto-oracle-v3.0.0';
 const OFFLINE_URL = '/offline.html';
+const API_CACHE = 'lotto-api-cache-v3.0.0';
+const STATIC_CACHE = 'lotto-static-cache-v3.0.0';
+const PREDICTION_CACHE = 'lotto-prediction-cache-v3.0.0';
 
 // Ressources à mettre en cache immédiatement
 const PRECACHE_URLS = [
   '/',
   '/offline.html',
   '/manifest.json',
-  // Ajouter d'autres ressources critiques ici
+  '/icon-192x192.png',
+  '/icon-512x512.png'
 ];
 
 // Ressources à ignorer (ne pas mettre en cache)

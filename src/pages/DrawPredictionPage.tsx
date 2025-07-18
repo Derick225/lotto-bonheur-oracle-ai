@@ -3,47 +3,103 @@ import { useParams, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LotteryNumber } from '@/components/LotteryNumber';
-import { LotteryAPIService } from '@/services/lotteryAPI';
-import { PredictionService } from '@/services/predictionService';
-import { ArrowLeft, Brain, Zap, Loader2, TrendingUp } from 'lucide-react';
+import { AdvancedPredictionDisplay } from '@/components/AdvancedPredictionDisplay';
+import { PredictionService, PredictionResult } from '@/services/predictionService';
+import { SyncService } from '@/services/syncService';
+import { DrawResult } from '@/services/lotteryAPI';
+import { ArrowLeft, Brain, Zap, Loader2, TrendingUp, Settings, BarChart3, Activity, Cpu } from 'lucide-react';
 
-interface PredictionResult {
-  numbers: Array<{ number: number; probability: number }>;
-  confidence: number;
-  algorithm: 'XGBoost' | 'RNN-LSTM' | 'RandomForest' | 'Hybrid';
-  features: string[];
-  metadata?: {
-    dataPoints: number;
-    lastUpdate: Date;
-    modelVersion: string;
-  };
-}
+// Interface locale supprimée - utilisation de celle du service
 
 export function DrawPredictionPage() {
   const { drawName } = useParams<{ drawName: string }>();
   const [prediction, setPrediction] = useState<PredictionResult | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string>('');
+  const [selectedAlgorithm, setSelectedAlgorithm] = useState<'XGBoost' | 'RNN-LSTM' | 'Hybrid'>('Hybrid');
+  const [modelInfo, setModelInfo] = useState<any>(null);
+  const [trainingInProgress, setTrainingInProgress] = useState(false);
 
-  const generatePrediction = async () => {
+  const generatePrediction = async (algorithm: 'XGBoost' | 'RNN-LSTM' | 'Hybrid' = selectedAlgorithm) => {
     if (!drawName) return;
-    
+
     try {
-      setGenerating(true);
-      
-      // Récupérer les données historiques pour la prédiction
-      const results = await LotteryAPIService.getDrawResults(drawName, 100);
-      
-      // Générer la prédiction avec le service d'IA
-      const predictionResult = await PredictionService.generatePrediction(drawName, results, 'Hybrid');
-      
+      setLoading(true);
+      setError('');
+
+      console.log(`🎯 Génération de prédiction ${algorithm} pour ${drawName}...`);
+
+      // Récupérer les données historiques via le service de synchronisation
+      const results = await SyncService.getDrawResults(drawName, 200);
+
+      if (results.length < 30) {
+        throw new Error('Données insuffisantes pour générer une prédiction fiable (minimum 30 tirages)');
+      }
+
+      console.log(`📊 ${results.length} tirages récupérés pour l'analyse`);
+
+      // Vérifier si les modèles sont initialisés
+      const modelsInfo = PredictionService.getModelsInfo();
+      setModelInfo(modelsInfo);
+
+      if (!modelsInfo.isInitialized) {
+        console.log('🤖 Initialisation des modèles...');
+        await PredictionService.initializeModels();
+      }
+
+      // Générer la prédiction avec le nouveau système
+      const predictionResult = await PredictionService.generatePrediction(
+        drawName,
+        results,
+        algorithm
+      );
+
       setPrediction(predictionResult);
-    } catch (error) {
-      console.error('Erreur lors de la génération de la prédiction:', error);
+      console.log('✅ Prédiction générée avec succès');
+
+    } catch (err) {
+      console.error('❌ Erreur lors de la génération:', err);
+      setError(err instanceof Error ? err.message : 'Erreur lors de la génération de la prédiction');
     } finally {
-      setGenerating(false);
       setLoading(false);
+    }
+  };
+
+  const handleAlgorithmChange = (algorithm: string) => {
+    const alg = algorithm as 'XGBoost' | 'RNN-LSTM' | 'Hybrid';
+    setSelectedAlgorithm(alg);
+    generatePrediction(alg);
+  };
+
+  const handleTrainModels = async () => {
+    if (!drawName) return;
+
+    try {
+      setTrainingInProgress(true);
+      console.log('🎓 Début de l\'entraînement des modèles...');
+
+      // Récupérer toutes les données disponibles pour l'entraînement
+      const allResults = await SyncService.getDrawResults(drawName, 1000);
+
+      if (allResults.length < 50) {
+        throw new Error('Données insuffisantes pour l\'entraînement (minimum 50 tirages)');
+      }
+
+      // Entraîner les modèles
+      const metrics = await PredictionService.trainModels(allResults);
+      console.log('🏆 Entraînement terminé:', metrics);
+
+      // Régénérer la prédiction avec les modèles entraînés
+      await generatePrediction();
+
+    } catch (err) {
+      console.error('❌ Erreur lors de l\'entraînement:', err);
+      setError(err instanceof Error ? err.message : 'Erreur lors de l\'entraînement des modèles');
+    } finally {
+      setTrainingInProgress(false);
     }
   };
 
@@ -51,29 +107,12 @@ export function DrawPredictionPage() {
     generatePrediction();
   }, [drawName]);
 
-  if (loading || generating) {
+  if (!drawName) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <Brain className="h-12 w-12 animate-pulse text-primary mx-auto mb-4" />
-          <div className="space-y-2">
-            <p className="text-lg font-semibold text-foreground">
-              {generating ? 'Génération en cours...' : 'Initialisation de l\'IA...'}
-            </p>
-            <p className="text-muted-foreground">
-              Analyse des patterns avec XGBoost + RNN-LSTM
-            </p>
-          </div>
-          <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto mt-4" />
+          <p className="text-muted-foreground">Tirage non spécifié</p>
         </div>
-      </div>
-    );
-  }
-
-  if (!prediction) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Erreur lors de la génération de la prédiction.</p>
       </div>
     );
   }
@@ -82,50 +121,59 @@ export function DrawPredictionPage() {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         {/* En-tête */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Retour
-              </Link>
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">{drawName}</h1>
-              <p className="text-muted-foreground">Prédictions intelligentes</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <Badge variant="secondary" className="gap-1">
-              <Brain className="h-4 w-4" />
-              IA Avancée
-            </Badge>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={generatePrediction}
-              disabled={generating}
-            >
-              <Zap className={`h-4 w-4 mr-2 ${generating ? 'animate-pulse' : ''}`} />
-              Nouvelle prédiction
-            </Button>
-          </div>
+        <div className="flex items-center gap-4 mb-8">
+          <Link to="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" />
+            Retour
+          </Link>
+          <div className="h-4 w-px bg-border" />
+          <h1 className="text-2xl font-bold">Prédiction IA pour {drawName}</h1>
         </div>
 
-        {/* Menu de navigation */}
-        <div className="flex gap-2 mb-8">
-          <Button variant="outline" size="sm" asChild>
-            <Link to={`/draw/${drawName}/data`}>Données</Link>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link to={`/draw/${drawName}/stats`}>Statistiques</Link>
-          </Button>
-          <Button variant="default" size="sm">Prédiction</Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link to={`/draw/${drawName}/history`}>Historique</Link>
-          </Button>
-        </div>
+        {/* Informations sur les modèles */}
+        {modelInfo && (
+          <Alert className="mb-6">
+            <Settings className="h-4 w-4" />
+            <AlertDescription>
+              <div className="flex items-center justify-between">
+                <span>
+                  Modèles: {modelInfo.isInitialized ? '✅ Initialisés' : '⚠️ Non initialisés'}
+                  {modelInfo.xgboost?.isTrained && ' | XGBoost: Entraîné'}
+                  {modelInfo.lstm?.isTrained && ' | LSTM: Entraîné'}
+                </span>
+                {!modelInfo.xgboost?.isTrained || !modelInfo.lstm?.isTrained ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleTrainModels}
+                    disabled={trainingInProgress}
+                  >
+                    {trainingInProgress ? (
+                      <>
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        Entraînement...
+                      </>
+                    ) : (
+                      <>
+                        <Brain className="h-3 w-3 mr-1" />
+                        Entraîner les Modèles
+                      </>
+                    )}
+                  </Button>
+                ) : null}
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Composant de prédiction avancé */}
+        <AdvancedPredictionDisplay
+          prediction={prediction}
+          loading={loading}
+          error={error}
+          onRefresh={() => generatePrediction()}
+          onAlgorithmChange={handleAlgorithmChange}
+        />
 
         <div className="grid gap-8">
           {/* Prédiction principale */}

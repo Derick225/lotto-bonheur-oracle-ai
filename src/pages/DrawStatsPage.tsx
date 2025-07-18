@@ -4,9 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { LotteryNumber } from '@/components/LotteryNumber';
-import { LotteryAPIService } from '@/services/lotteryAPI';
-import { ArrowLeft, TrendingUp, TrendingDown, Loader2, BarChart3 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { LotteryNumber, ColorLegend } from '@/components/LotteryNumber';
+import { AdvancedVisualization } from '@/components/AdvancedVisualization';
+import { PWAManager } from '@/components/PWAManager';
+import { SyncService } from '@/services/syncService';
+import { DrawResult } from '@/services/lotteryAPI';
+import { ArrowLeft, TrendingUp, TrendingDown, Loader2, BarChart3, Palette, Grid3X3 } from 'lucide-react';
 
 interface Statistics {
   frequency: { [key: number]: number };
