@@ -32,11 +32,7 @@ const App = () => (
               {/* Header global avec toggle */}
               <header className="h-14 flex items-center justify-between px-4 border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/60 sticky top-0 z-40">
                 <div className="flex items-center gap-2">
-                  <SidebarTrigger asChild>
-                    <Button variant="ghost" size="sm" className="p-2">
-                      <Menu className="h-4 w-4" />
-                    </Button>
-                  </SidebarTrigger>
+                  <SidebarTrigger className="p-2" />
                   <div className="h-6 w-px bg-border mx-2" />
                   <h2 className="font-semibold text-foreground">Lotto Bonheur Oracle AI</h2>
                 </div>
