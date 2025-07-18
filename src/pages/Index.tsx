@@ -11,10 +11,10 @@ const Index = () => {
   const todayDraws = DRAW_SCHEDULE[currentDay] || {};
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
+    <div className="min-h-full">
+      {/* Suppression du Header car il est maintenant global */}
       
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-6 py-8">
         {/* Section Hero */}
         <div className="text-center mb-12">
           <Badge variant="secondary" className="mb-4 bg-accent/20 text-accent-foreground">
