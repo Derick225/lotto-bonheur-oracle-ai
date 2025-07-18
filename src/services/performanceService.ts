@@ -3,7 +3,7 @@
  * Gère le lazy loading, la mémoïsation et les optimisations
  */
 
-import { useCallback, useMemo, useRef, useEffect } from 'react';
+import React, { useCallback, useMemo, useRef, useEffect } from 'react';
 
 // Cache global pour la mémoïsation
 const globalCache = new Map<string, any>();
