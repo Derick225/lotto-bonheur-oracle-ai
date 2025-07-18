@@ -1,8 +1,19 @@
 import { DrawResult } from './lotteryAPI';
+import { XGBoostModel } from './xgboostModel';
+import { RNNLSTMModel } from './rnnLstmModel';
+import { FeatureEngineering, MLPrediction, ModelMetrics } from './mlModels';
+import { IndexedDBService } from './indexedDBService';
 
-// Interface pour les prédictions
+// Interface pour les prédictions améliorée
 export interface PredictionResult {
-  numbers: Array<{ number: number; probability: number }>;
+  numbers: Array<{
+    number: number;
+    probability: number;
+    confidence: number;
+    uncertainty: number;
+    bayesianProbability?: number;
+    features: string[];
+  }>;
   confidence: number;
   algorithm: 'XGBoost' | 'RNN-LSTM' | 'RandomForest' | 'Hybrid';
   features: string[];
@@ -10,7 +21,18 @@ export interface PredictionResult {
     dataPoints: number;
     lastUpdate: Date;
     modelVersion: string;
+    modelMetrics?: ModelMetrics;
+    ensembleWeights?: { [key: string]: number };
+    bayesianAnalysis?: BayesianAnalysis;
   };
+}
+
+// Interface pour l'analyse bayésienne
+export interface BayesianAnalysis {
+  priorProbabilities: number[];
+  posteriorProbabilities: number[];
+  evidenceStrength: number;
+  credibleIntervals: Array<{ lower: number; upper: number }>;
 }
 
 // Analyse des patterns et fréquences
@@ -187,92 +209,589 @@ class RNNLSTMSimulator {
   }
 }
 
-// Service principal de prédiction
+/**
+ * Classe pour l'analyse bayésienne
+ */
+class BayesianAnalyzer {
+  /**
+   * Calcule les probabilités a priori basées sur l'historique
+   */
+  static calculatePriorProbabilities(results: DrawResult[]): number[] {
+    const frequencies = new Array(90).fill(0);
+    const totalDraws = results.length;
+
+    results.forEach(result => {
+      result.gagnants.forEach(num => {
+        frequencies[num - 1]++;
+      });
+    });
+
+    // Probabilité a priori = fréquence historique + lissage de Laplace
+    return frequencies.map(freq => (freq + 1) / (totalDraws + 90));
+  }
+
+  /**
+   * Met à jour les probabilités avec l'évidence (théorème de Bayes)
+   */
+  static updatePosteriorProbabilities(
+    priors: number[],
+    likelihood: number[],
+    evidence: number
+  ): number[] {
+    return priors.map((prior, i) => (prior * likelihood[i]) / evidence);
+  }
+
+  /**
+   * Calcule les intervalles de crédibilité
+   */
+  static calculateCredibleIntervals(
+    posteriors: number[],
+    confidence: number = 0.95
+  ): Array<{ lower: number; upper: number }> {
+    const alpha = (1 - confidence) / 2;
+
+    return posteriors.map(prob => {
+      // Approximation normale pour les intervalles de crédibilité
+      const variance = prob * (1 - prob);
+      const stdDev = Math.sqrt(variance);
+      const zScore = 1.96; // Pour 95% de confiance
+
+      return {
+        lower: Math.max(0, prob - zScore * stdDev),
+        upper: Math.min(1, prob + zScore * stdDev)
+      };
+    });
+  }
+
+  /**
+   * Effectue une analyse bayésienne complète
+   */
+  static performBayesianAnalysis(
+    results: DrawResult[],
+    modelPredictions: MLPrediction[]
+  ): BayesianAnalysis {
+    const priors = this.calculatePriorProbabilities(results);
+
+    // Utiliser les prédictions du modèle comme likelihood
+    const likelihood = new Array(90).fill(0.01); // Probabilité de base
+    modelPredictions.forEach(pred => {
+      likelihood[pred.number - 1] = pred.probability;
+    });
+
+    // Calculer l'évidence (normalisation)
+    const evidence = priors.reduce((sum, prior, i) => sum + prior * likelihood[i], 0);
+
+    // Calculer les probabilités a posteriori
+    const posteriors = this.updatePosteriorProbabilities(priors, likelihood, evidence);
+
+    // Calculer les intervalles de crédibilité
+    const credibleIntervals = this.calculateCredibleIntervals(posteriors);
+
+    return {
+      priorProbabilities: priors,
+      posteriorProbabilities: posteriors,
+      evidenceStrength: evidence,
+      credibleIntervals
+    };
+  }
+}
+
+// Service principal de prédiction amélioré
 export class PredictionService {
+  private static xgboostModel: XGBoostModel | null = null;
+  private static rnnLstmModel: RNNLSTMModel | null = null;
+  private static isInitialized: boolean = false;
+
+  /**
+   * Initialise les modèles de machine learning
+   */
+  static async initializeModels(): Promise<void> {
+    if (this.isInitialized) return;
+
+    console.log('🤖 Initialisation des modèles de prédiction...');
+
+    this.xgboostModel = new XGBoostModel({
+      sequenceLength: 15,
+      hiddenUnits: 128,
+      learningRate: 0.001,
+      batchSize: 32,
+      epochs: 80,
+      regularization: { l1: 0.01, l2: 0.01, dropout: 0.3 }
+    });
+
+    this.rnnLstmModel = new RNNLSTMModel({
+      sequenceLength: 20,
+      hiddenUnits: 256,
+      learningRate: 0.0005,
+      batchSize: 16,
+      epochs: 120,
+      regularization: { l1: 0.001, l2: 0.001, dropout: 0.4 }
+    });
+
+    this.isInitialized = true;
+    console.log('✅ Modèles initialisés');
+  }
+
+  /**
+   * Entraîne les modèles avec les données historiques
+   */
+  static async trainModels(results: DrawResult[]): Promise<{
+    xgboostMetrics: ModelMetrics;
+    lstmMetrics: ModelMetrics;
+  }> {
+    await this.initializeModels();
+
+    if (!this.xgboostModel || !this.rnnLstmModel) {
+      throw new Error('Modèles non initialisés');
+    }
+
+    console.log('🎯 Début de l\'entraînement des modèles...');
+
+    // Entraîner les deux modèles en parallèle
+    const [xgboostMetrics, lstmMetrics] = await Promise.all([
+      this.xgboostModel.train(results),
+      this.rnnLstmModel.train(results)
+    ]);
+
+    // Sauvegarder les modèles entraînés
+    await this.saveTrainedModels();
+
+    console.log('🏆 Entraînement terminé avec succès');
+
+    return { xgboostMetrics, lstmMetrics };
+  }
+
+  /**
+   * Génère une prédiction avec le système hybride avancé
+   */
   static async generatePrediction(
     drawName: string,
     results: DrawResult[],
     algorithm: 'XGBoost' | 'RNN-LSTM' | 'RandomForest' | 'Hybrid' = 'Hybrid'
   ): Promise<PredictionResult> {
-    
-    if (results.length < 10) {
-      throw new Error('Données insuffisantes pour générer une prédiction fiable');
+
+    if (results.length < 30) {
+      throw new Error('Données insuffisantes pour générer une prédiction fiable (minimum 30 tirages)');
     }
 
-    let predictions: Array<{ number: number; probability: number }>;
+    await this.initializeModels();
+
+    let predictions: MLPrediction[];
     let confidence: number;
-    
-    switch (algorithm) {
-      case 'XGBoost':
-        predictions = XGBoostSimulator.predict(results);
-        confidence = Math.min(0.85, 0.6 + (results.length / 1000) * 0.25);
-        break;
-        
-      case 'RandomForest':
-        predictions = RandomForestSimulator.predict(results);
-        confidence = Math.min(0.80, 0.55 + (results.length / 1000) * 0.25);
-        break;
-        
-      case 'RNN-LSTM':
-        predictions = RNNLSTMSimulator.predict(results);
-        confidence = Math.min(0.82, 0.58 + (results.length / 1000) * 0.24);
-        break;
-        
-      case 'Hybrid':
-      default:
-        const xgbPreds = XGBoostSimulator.predict(results);
-        const rfPreds = RandomForestSimulator.predict(results);
-        const rnnPreds = RNNLSTMSimulator.predict(results);
-        
-        // Combiner les prédictions avec pondération
-        const combined = this.combineHybridPredictions(xgbPreds, rfPreds, rnnPreds);
-        predictions = combined;
-        confidence = Math.min(0.88, 0.65 + (results.length / 1000) * 0.23);
-        break;
+    let modelMetrics: ModelMetrics | undefined;
+    let ensembleWeights: { [key: string]: number } | undefined;
+    let bayesianAnalysis: BayesianAnalysis | undefined;
+
+    try {
+      switch (algorithm) {
+        case 'XGBoost':
+          if (!this.xgboostModel) throw new Error('Modèle XGBoost non disponible');
+
+          // Entraîner si nécessaire
+          if (!this.xgboostModel.getModelInfo().isTrained) {
+            modelMetrics = await this.xgboostModel.train(results);
+          }
+
+          predictions = await this.xgboostModel.predict(results);
+          confidence = this.calculateDynamicConfidence(predictions, results.length, 'XGBoost');
+          break;
+
+        case 'RNN-LSTM':
+          if (!this.rnnLstmModel) throw new Error('Modèle RNN-LSTM non disponible');
+
+          // Entraîner si nécessaire
+          if (!this.rnnLstmModel.getModelInfo().isTrained) {
+            modelMetrics = await this.rnnLstmModel.train(results);
+          }
+
+          predictions = await this.rnnLstmModel.predict(results);
+          confidence = this.calculateDynamicConfidence(predictions, results.length, 'RNN-LSTM');
+          break;
+
+        case 'Hybrid':
+        default:
+          // Système hybride avancé
+          const hybridResult = await this.generateHybridPrediction(results);
+          predictions = hybridResult.predictions;
+          confidence = hybridResult.confidence;
+          ensembleWeights = hybridResult.ensembleWeights;
+          bayesianAnalysis = hybridResult.bayesianAnalysis;
+          break;
+      }
+
+      // Effectuer l'analyse bayésienne si pas déjà fait
+      if (!bayesianAnalysis) {
+        bayesianAnalysis = BayesianAnalyzer.performBayesianAnalysis(results, predictions);
+      }
+
+      // Enrichir les prédictions avec l'analyse bayésienne
+      const enrichedPredictions = predictions.slice(0, 5).map(pred => ({
+        number: pred.number,
+        probability: pred.probability,
+        confidence: pred.confidence,
+        uncertainty: pred.uncertainty,
+        bayesianProbability: bayesianAnalysis!.posteriorProbabilities[pred.number - 1],
+        features: pred.features
+      }));
+
+      // Sauvegarder la prédiction
+      await this.savePrediction(drawName, {
+        numbers: enrichedPredictions,
+        confidence,
+        algorithm,
+        features: this.generateFeatureDescription(predictions),
+        metadata: {
+          dataPoints: results.length,
+          lastUpdate: new Date(),
+          modelVersion: '2.0.0',
+          modelMetrics,
+          ensembleWeights,
+          bayesianAnalysis
+        }
+      });
+
+      return {
+        numbers: enrichedPredictions,
+        confidence,
+        algorithm,
+        features: this.generateFeatureDescription(predictions),
+        metadata: {
+          dataPoints: results.length,
+          lastUpdate: new Date(),
+          modelVersion: '2.0.0',
+          modelMetrics,
+          ensembleWeights,
+          bayesianAnalysis
+        }
+      };
+
+    } catch (error) {
+      console.error('Erreur lors de la génération de prédiction:', error);
+
+      // Fallback vers les anciens simulateurs
+      return this.generateFallbackPrediction(drawName, results, algorithm);
     }
-    
-    // Sélectionner les 5 meilleurs
-    const topPredictions = predictions.slice(0, 5);
-    
+  }
+
+  /**
+   * Génère une prédiction hybride combinant XGBoost et RNN-LSTM
+   */
+  private static async generateHybridPrediction(results: DrawResult[]): Promise<{
+    predictions: MLPrediction[];
+    confidence: number;
+    ensembleWeights: { [key: string]: number };
+    bayesianAnalysis: BayesianAnalysis;
+  }> {
+    if (!this.xgboostModel || !this.rnnLstmModel) {
+      throw new Error('Modèles non initialisés');
+    }
+
+    // Entraîner les modèles si nécessaire
+    const trainingPromises: Promise<any>[] = [];
+
+    if (!this.xgboostModel.getModelInfo().isTrained) {
+      trainingPromises.push(this.xgboostModel.train(results));
+    }
+
+    if (!this.rnnLstmModel.getModelInfo().isTrained) {
+      trainingPromises.push(this.rnnLstmModel.train(results));
+    }
+
+    if (trainingPromises.length > 0) {
+      await Promise.all(trainingPromises);
+    }
+
+    // Obtenir les prédictions des deux modèles
+    const [xgboostPreds, lstmPreds] = await Promise.all([
+      this.xgboostModel.predict(results),
+      this.rnnLstmModel.predict(results)
+    ]);
+
+    // Calculer les poids dynamiques basés sur la performance récente
+    const ensembleWeights = this.calculateDynamicWeights(xgboostPreds, lstmPreds, results);
+
+    // Combiner les prédictions avec les poids dynamiques
+    const combinedPredictions = this.combineMLPredictions(
+      xgboostPreds,
+      lstmPreds,
+      ensembleWeights
+    );
+
+    // Effectuer l'analyse bayésienne
+    const bayesianAnalysis = BayesianAnalyzer.performBayesianAnalysis(results, combinedPredictions);
+
+    // Calculer la confiance globale
+    const confidence = this.calculateEnsembleConfidence(
+      xgboostPreds,
+      lstmPreds,
+      combinedPredictions,
+      results.length
+    );
+
     return {
-      numbers: topPredictions,
+      predictions: combinedPredictions,
       confidence,
-      algorithm,
-      features: [
-        'Analyse de fréquence historique',
-        'Patterns de co-occurrence',
-        'Tendances temporelles',
-        'Analyse des écarts',
-        'Cycles saisonniers',
-        'Momentum séquentiel'
-      ],
+      ensembleWeights,
+      bayesianAnalysis
+    };
+  }
+
+  /**
+   * Combine les prédictions de plusieurs modèles ML
+   */
+  private static combineMLPredictions(
+    xgboostPreds: MLPrediction[],
+    lstmPreds: MLPrediction[],
+    weights: { [key: string]: number }
+  ): MLPrediction[] {
+    const combined: { [key: number]: MLPrediction } = {};
+
+    // Combiner XGBoost
+    xgboostPreds.forEach(pred => {
+      combined[pred.number] = {
+        number: pred.number,
+        probability: pred.probability * weights.xgboost,
+        confidence: pred.confidence * weights.xgboost,
+        uncertainty: pred.uncertainty,
+        features: [...pred.features]
+      };
+    });
+
+    // Ajouter LSTM
+    lstmPreds.forEach(pred => {
+      if (combined[pred.number]) {
+        combined[pred.number].probability += pred.probability * weights.lstm;
+        combined[pred.number].confidence += pred.confidence * weights.lstm;
+        combined[pred.number].uncertainty = Math.max(
+          combined[pred.number].uncertainty,
+          pred.uncertainty
+        );
+        combined[pred.number].features.push(...pred.features);
+      } else {
+        combined[pred.number] = {
+          number: pred.number,
+          probability: pred.probability * weights.lstm,
+          confidence: pred.confidence * weights.lstm,
+          uncertainty: pred.uncertainty,
+          features: [...pred.features]
+        };
+      }
+    });
+
+    // Normaliser et trier
+    return Object.values(combined)
+      .sort((a, b) => b.probability - a.probability)
+      .slice(0, 15);
+  }
+
+  /**
+   * Calcule les poids dynamiques pour l'ensemble
+   */
+  private static calculateDynamicWeights(
+    xgboostPreds: MLPrediction[],
+    lstmPreds: MLPrediction[],
+    results: DrawResult[]
+  ): { [key: string]: number } {
+    // Évaluer la performance récente de chaque modèle
+    const recentResults = results.slice(0, 10);
+    let xgboostScore = 0;
+    let lstmScore = 0;
+
+    recentResults.forEach(result => {
+      // Score basé sur la précision des prédictions récentes
+      const xgbHits = xgboostPreds.filter(pred =>
+        result.gagnants.includes(pred.number)
+      ).length;
+      const lstmHits = lstmPreds.filter(pred =>
+        result.gagnants.includes(pred.number)
+      ).length;
+
+      xgboostScore += xgbHits;
+      lstmScore += lstmHits;
+    });
+
+    // Normaliser les poids
+    const totalScore = xgboostScore + lstmScore;
+    if (totalScore === 0) {
+      return { xgboost: 0.6, lstm: 0.4 }; // Poids par défaut
+    }
+
+    return {
+      xgboost: xgboostScore / totalScore,
+      lstm: lstmScore / totalScore
+    };
+  }
+
+  /**
+   * Calcule la confiance dynamique basée sur les prédictions
+   */
+  private static calculateDynamicConfidence(
+    predictions: MLPrediction[],
+    dataPoints: number,
+    algorithm: string
+  ): number {
+    const baseConfidence = {
+      'XGBoost': 0.75,
+      'RNN-LSTM': 0.70,
+      'Hybrid': 0.85
+    }[algorithm] || 0.65;
+
+    // Ajuster basé sur la quantité de données
+    const dataBonus = Math.min(0.15, (dataPoints - 30) / 1000 * 0.15);
+
+    // Ajuster basé sur la cohérence des prédictions
+    const avgConfidence = predictions.reduce((sum, pred) => sum + pred.confidence, 0) / predictions.length;
+    const consistencyBonus = avgConfidence * 0.1;
+
+    return Math.min(0.95, baseConfidence + dataBonus + consistencyBonus);
+  }
+
+  /**
+   * Calcule la confiance de l'ensemble
+   */
+  private static calculateEnsembleConfidence(
+    xgboostPreds: MLPrediction[],
+    lstmPreds: MLPrediction[],
+    combinedPreds: MLPrediction[],
+    dataPoints: number
+  ): number {
+    // Mesurer l'accord entre les modèles
+    const agreement = this.calculateModelAgreement(xgboostPreds, lstmPreds);
+
+    // Confiance basée sur l'accord et la quantité de données
+    const baseConfidence = 0.80;
+    const agreementBonus = agreement * 0.15;
+    const dataBonus = Math.min(0.10, (dataPoints - 50) / 1000 * 0.10);
+
+    return Math.min(0.95, baseConfidence + agreementBonus + dataBonus);
+  }
+
+  /**
+   * Mesure l'accord entre deux ensembles de prédictions
+   */
+  private static calculateModelAgreement(
+    preds1: MLPrediction[],
+    preds2: MLPrediction[]
+  ): number {
+    const top5_1 = new Set(preds1.slice(0, 5).map(p => p.number));
+    const top5_2 = new Set(preds2.slice(0, 5).map(p => p.number));
+
+    const intersection = new Set([...top5_1].filter(x => top5_2.has(x)));
+    return intersection.size / 5; // Pourcentage d'accord sur le top 5
+  }
+
+  /**
+   * Génère une description des features utilisées
+   */
+  private static generateFeatureDescription(predictions: MLPrediction[]): string[] {
+    const allFeatures = new Set<string>();
+
+    predictions.slice(0, 5).forEach(pred => {
+      pred.features.forEach(feature => allFeatures.add(feature));
+    });
+
+    const baseFeatures = [
+      'Analyse de fréquence historique avancée',
+      'Patterns de co-occurrence multi-dimensionnels',
+      'Tendances temporelles avec LSTM',
+      'Analyse des écarts avec régularisation',
+      'Cycles saisonniers et momentum',
+      'Analyse bayésienne des probabilités'
+    ];
+
+    return [...baseFeatures, ...Array.from(allFeatures).slice(0, 4)];
+  }
+
+  /**
+   * Sauvegarde une prédiction dans la base de données
+   */
+  private static async savePrediction(drawName: string, prediction: PredictionResult): Promise<void> {
+    try {
+      await IndexedDBService.savePrediction({
+        drawName,
+        date: new Date().toISOString().split('T')[0],
+        numbers: prediction.numbers,
+        confidence: prediction.confidence,
+        algorithm: prediction.algorithm,
+        features: prediction.features
+      });
+    } catch (error) {
+      console.warn('Erreur lors de la sauvegarde de la prédiction:', error);
+    }
+  }
+
+  /**
+   * Sauvegarde les modèles entraînés
+   */
+  private static async saveTrainedModels(): Promise<void> {
+    try {
+      if (this.xgboostModel) {
+        await this.xgboostModel.saveModel('indexeddb://xgboost');
+      }
+      if (this.rnnLstmModel) {
+        await this.rnnLstmModel.saveModel('indexeddb://lstm');
+      }
+      console.log('✅ Modèles sauvegardés');
+    } catch (error) {
+      console.warn('Erreur lors de la sauvegarde des modèles:', error);
+    }
+  }
+
+  /**
+   * Génère une prédiction de fallback avec les anciens simulateurs
+   */
+  private static async generateFallbackPrediction(
+    drawName: string,
+    results: DrawResult[],
+    algorithm: string
+  ): Promise<PredictionResult> {
+    console.warn('🔄 Utilisation du mode fallback pour les prédictions');
+
+    // Utiliser les anciens simulateurs comme fallback
+    const xgbPreds = XGBoostSimulator.predict(results);
+    const rnnPreds = RNNLSTMSimulator.predict(results);
+
+    const combined = this.combineHybridPredictions(xgbPreds, [], rnnPreds);
+    const topPredictions = combined.slice(0, 5);
+
+    return {
+      numbers: topPredictions.map(pred => ({
+        number: pred.number,
+        probability: pred.probability,
+        confidence: 0.6,
+        uncertainty: 0.3,
+        features: ['Mode fallback - Simulateurs basiques']
+      })),
+      confidence: 0.6,
+      algorithm: algorithm as any,
+      features: ['Mode fallback activé'],
       metadata: {
         dataPoints: results.length,
         lastUpdate: new Date(),
-        modelVersion: '1.0.0'
+        modelVersion: '1.0.0-fallback'
       }
     };
   }
 
+  /**
+   * Combine les prédictions des anciens simulateurs (fallback)
+   */
   private static combineHybridPredictions(
     xgb: Array<{ number: number; probability: number }>,
     rf: Array<{ number: number; probability: number }>,
     rnn: Array<{ number: number; probability: number }>
   ): Array<{ number: number; probability: number }> {
-    
     const combined: { [key: number]: number } = {};
-    
-    // Pondération: XGBoost 40%, Random Forest 30%, RNN-LSTM 30%
-    const weights = { xgb: 0.4, rf: 0.3, rnn: 0.3 };
-    
+    const weights = { xgb: 0.5, rf: 0.2, rnn: 0.3 };
+
     [xgb, rf, rnn].forEach((preds, index) => {
       const weight = index === 0 ? weights.xgb : index === 1 ? weights.rf : weights.rnn;
-      
+
       preds.forEach(pred => {
         combined[pred.number] = (combined[pred.number] || 0) + (pred.probability * weight);
       });
     });
-    
+
     return Object.entries(combined)
       .map(([num, prob]) => ({ number: parseInt(num), probability: prob }))
       .sort((a, b) => b.probability - a.probability);
@@ -288,12 +807,12 @@ export class PredictionService {
     misses: number;
     probabilityScore: number;
   } {
-    
+
     const predictedNumbers = predictions.map(p => p.number);
     const hits = predictedNumbers.filter(num => actualResult.includes(num)).length;
     const misses = 5 - hits;
     const accuracy = hits / 5;
-    
+
     // Score de probabilité pondéré
     const probabilityScore = predictions.reduce((score, pred) => {
       if (actualResult.includes(pred.number)) {
@@ -301,12 +820,38 @@ export class PredictionService {
       }
       return score;
     }, 0);
-    
+
     return {
       accuracy,
       hits,
       misses,
       probabilityScore
+    };
+  }
+
+  /**
+   * Libère la mémoire des modèles
+   */
+  static dispose(): void {
+    if (this.xgboostModel) {
+      this.xgboostModel.dispose();
+      this.xgboostModel = null;
+    }
+    if (this.rnnLstmModel) {
+      this.rnnLstmModel.dispose();
+      this.rnnLstmModel = null;
+    }
+    this.isInitialized = false;
+  }
+
+  /**
+   * Retourne les informations sur les modèles
+   */
+  static getModelsInfo(): any {
+    return {
+      isInitialized: this.isInitialized,
+      xgboost: this.xgboostModel?.getModelInfo() || null,
+      lstm: this.rnnLstmModel?.getModelInfo() || null
     };
   }
 }

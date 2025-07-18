@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Calendar, Edit, Trash2, Plus, Save, X, DownloadIcon } from "lucide-react";
+import { Calendar, Edit, Trash2, Plus, Save, X, DownloadIcon, Database, Sync } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -12,10 +12,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Header } from "@/components/Header";
 import { LotteryNumber } from "@/components/LotteryNumber";
+import { SyncStatusDetailed } from "@/components/SyncStatus";
 import { IndexedDBService } from "@/services/indexedDBService";
+import { SyncService } from "@/services/syncService";
 import { DrawResult } from "@/services/lotteryAPI";
 import { DRAW_SCHEDULE } from "@/data/drawSchedule";
 
@@ -190,18 +193,35 @@ export function AdminPage() {
       
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto space-y-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5" />
-                    Interface Administrateur
-                  </CardTitle>
-                  <CardDescription>
-                    Gérer les résultats de tirages - Ajouter, modifier et supprimer des données
-                  </CardDescription>
-                </div>
+          <Tabs defaultValue="data" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="data" className="flex items-center gap-2">
+                <Database className="h-4 w-4" />
+                Gestion des Données
+              </TabsTrigger>
+              <TabsTrigger value="sync" className="flex items-center gap-2">
+                <Sync className="h-4 w-4" />
+                Synchronisation
+              </TabsTrigger>
+              <TabsTrigger value="stats" className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Statistiques
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="data">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Database className="h-5 w-5" />
+                        Gestion des Données
+                      </CardTitle>
+                      <CardDescription>
+                        Ajouter, modifier et supprimer des résultats de tirages
+                      </CardDescription>
+                    </div>
                 <div className="flex gap-2">
                   <Button onClick={handleExportData} variant="outline">
                     <DownloadIcon className="h-4 w-4 mr-2" />
@@ -463,6 +483,78 @@ export function AdminPage() {
               </CardContent>
             </Card>
           )}
+            </TabsContent>
+
+            <TabsContent value="sync">
+              <SyncStatusDetailed />
+            </TabsContent>
+
+            <TabsContent value="stats">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5" />
+                    Statistiques de la Base de Données
+                  </CardTitle>
+                  <CardDescription>
+                    Informations sur les données stockées et leur répartition
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Card>
+                      <CardContent className="pt-6">
+                        <div className="text-2xl font-bold">{drawResults.length}</div>
+                        <p className="text-xs text-muted-foreground">
+                          Résultats totaux
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-6">
+                        <div className="text-2xl font-bold">
+                          {new Set(drawResults.map(r => r.draw_name)).size}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Tirages différents
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-6">
+                        <div className="text-2xl font-bold">
+                          {new Set(drawResults.map(r => r.date)).size}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Jours couverts
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <div className="mt-6">
+                    <h4 className="text-sm font-medium mb-3">Répartition par tirage</h4>
+                    <div className="space-y-2">
+                      {Object.entries(
+                        drawResults.reduce((acc, result) => {
+                          acc[result.draw_name] = (acc[result.draw_name] || 0) + 1;
+                          return acc;
+                        }, {} as Record<string, number>)
+                      )
+                        .sort(([,a], [,b]) => b - a)
+                        .slice(0, 10)
+                        .map(([drawName, count]) => (
+                          <div key={drawName} className="flex justify-between items-center">
+                            <span className="text-sm">{drawName}</span>
+                            <Badge variant="secondary">{count}</Badge>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>

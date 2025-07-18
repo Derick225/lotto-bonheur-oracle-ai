@@ -3,9 +3,11 @@ import { useParams, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { LotteryNumber } from '@/components/LotteryNumber';
-import { DrawResult, LotteryAPIService } from '@/services/lotteryAPI';
-import { ArrowLeft, Calendar, Loader2, RefreshCw } from 'lucide-react';
+import { DrawResult } from '@/services/lotteryAPI';
+import { SyncService } from '@/services/syncService';
+import { ArrowLeft, Calendar, Loader2, RefreshCw, Wifi, WifiOff, Database } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -14,26 +16,66 @@ export function DrawDataPage() {
   const [results, setResults] = useState<DrawResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [syncStatus, setSyncStatus] = useState<string>('');
+  const [error, setError] = useState<string>('');
 
   const fetchData = async () => {
     if (!drawName) return;
-    
+
     try {
       setLoading(true);
-      const data = await LotteryAPIService.getDrawResults(drawName, 20);
+      setError('');
+
+      // Utiliser le service de synchronisation pour récupérer les données
+      const data = await SyncService.getDrawResults(drawName, 20);
       setResults(data);
+
+      if (data.length === 0) {
+        setError('Aucune donnée disponible pour ce tirage');
+      } else {
+        setSyncStatus(`${data.length} résultats chargés`);
+      }
     } catch (error) {
       console.error('Erreur lors du chargement des données:', error);
+      setError(error instanceof Error ? error.message : 'Erreur de chargement');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
-    fetchData();
+    setSyncStatus('Synchronisation...');
+
+    try {
+      // Forcer une synchronisation
+      const syncResult = await SyncService.forcSync();
+      setSyncStatus(syncResult.message);
+
+      // Recharger les données
+      await fetchData();
+    } catch (error) {
+      console.error('Erreur lors de la synchronisation:', error);
+      setError('Erreur lors de la synchronisation');
+      setRefreshing(false);
+    }
   };
+
+  // Écouter les changements de statut en ligne
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -69,21 +111,38 @@ export function DrawDataPage() {
           </div>
           
           <div className="flex items-center gap-3">
+            <Badge variant={isOnline ? "default" : "secondary"} className="gap-1">
+              {isOnline ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
+              {isOnline ? 'En ligne' : 'Hors ligne'}
+            </Badge>
             <Badge variant="secondary" className="gap-1">
-              <Calendar className="h-4 w-4" />
+              <Database className="h-4 w-4" />
               {results.length} résultats
             </Badge>
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleRefresh}
               disabled={refreshing}
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-              Actualiser
+              {refreshing ? 'Synchronisation...' : 'Actualiser'}
             </Button>
           </div>
         </div>
+
+        {/* Statut et erreurs */}
+        {syncStatus && (
+          <Alert className="mb-6">
+            <AlertDescription>{syncStatus}</AlertDescription>
+          </Alert>
+        )}
+
+        {error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
         {/* Menu de navigation */}
         <div className="flex gap-2 mb-8">
