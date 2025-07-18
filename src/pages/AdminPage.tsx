@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Calendar, Edit, Trash2, Plus, Save, X, DownloadIcon, Database, Sync } from "lucide-react";
+import { Calendar, Edit, Trash2, Plus, Save, X, Download, Database, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -200,7 +200,7 @@ export function AdminPage() {
                 Gestion des Données
               </TabsTrigger>
               <TabsTrigger value="sync" className="flex items-center gap-2">
-                <Sync className="h-4 w-4" />
+                <RefreshCw className="h-4 w-4" />
                 Synchronisation
               </TabsTrigger>
               <TabsTrigger value="stats" className="flex items-center gap-2">
@@ -224,7 +224,7 @@ export function AdminPage() {
                     </div>
                 <div className="flex gap-2">
                   <Button onClick={handleExportData} variant="outline">
-                    <DownloadIcon className="h-4 w-4 mr-2" />
+                    <Download className="h-4 w-4 mr-2" />
                     Exporter JSON
                   </Button>
                   <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
