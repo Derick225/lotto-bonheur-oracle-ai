@@ -1,17 +1,53 @@
+import { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { DrawCard } from "@/components/DrawCard";
 import { StatsCard } from "@/components/StatsCard";
+import { AdvancedStatsCard, PrimaryStatsCard, SuccessStatsCard } from "@/components/AdvancedStatsCard";
 import { PWAManager } from "@/components/PWAManager";
 import { ColorLegend } from "@/components/LotteryNumber";
 import { DRAW_SCHEDULE, getCurrentDay } from "@/data/drawSchedule";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, Target, Clock, Zap, Palette, Download } from "lucide-react";
+import { TrendingUp, Target, Clock, Zap, Palette, Download, Activity, Brain, Star, BarChart3, Sparkles } from "lucide-react";
+import { useNotifications } from "@/components/NotificationCenter";
+import { IndexedDBService } from "@/services/indexedDBService";
 
 const Index = () => {
   const currentDay = getCurrentDay();
   const todayDraws = DRAW_SCHEDULE[currentDay] || {};
+  const { sendNotification } = useNotifications();
+  const [stats, setStats] = useState({
+    totalDraws: 0,
+    totalNumbers: 0,
+    accuracy: 94.2,
+    nextDrawTime: "2h 15m"
+  });
+
+  useEffect(() => {
+    // Charger les statistiques réelles
+    loadRealStats();
+    
+    // Envoyer une notification de bienvenue
+    sendNotification({
+      title: "Bienvenue!",
+      message: "Application d'analyse de loterie chargée avec succès",
+      type: "success"
+    });
+  }, []);
+
+  const loadRealStats = async () => {
+    try {
+      const results = await IndexedDBService.getDrawResults();
+      setStats(prev => ({
+        ...prev,
+        totalDraws: results.length,
+        totalNumbers: results.reduce((acc, draw) => acc + draw.gagnants.length, 0)
+      }));
+    } catch (error) {
+      console.error('Erreur lors du chargement des stats:', error);
+    }
+  };
 
   return (
     <div className="min-h-full">
@@ -35,40 +71,64 @@ const Index = () => {
             Découvrez les tendances, analysez les fréquences et obtenez des prédictions 
             intelligentes basées sur l'historique depuis janvier 2024.
           </p>
-          <Button size="lg" className="btn-hero gap-2">
+          <Button size="lg" className="btn-hero gap-2 animate-bounce-subtle">
             <Zap className="h-5 w-5" />
             Commencer l'analyse
           </Button>
         </div>
 
-        {/* Statistiques rapides */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-          <StatsCard
+        {/* Statistiques rapides avancées */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          <PrimaryStatsCard
             title="Tirages Analysés"
-            value="2,847"
+            value={stats.totalDraws}
             description="depuis janvier 2024"
             icon={Target}
             trend={12}
+            trendLabel="Ce mois"
+            progress={75}
+            progressLabel="Objectif mensuel"
+            animated={true}
           />
-          <StatsCard
-            title="Prédictions"
-            value="94.2%"
-            description="de précision moyenne"
+          <SuccessStatsCard
+            title="Précision Moyenne"
+            value={`${stats.accuracy}%`}
+            description="des prédictions"
             icon={TrendingUp}
             trend={5}
+            trendLabel="En amélioration"
+            progress={stats.accuracy}
+            progressLabel="Fiabilité"
+            animated={true}
           />
-          <StatsCard
-            title="Numéro Fréquent"
+          <AdvancedStatsCard
+            title="Numéro Tendance"
             value="42"
-            description="le plus tiré ce mois"
-            icon={Zap}
-          />
-          <StatsCard
+            description="le plus fréquent"
+            icon={Star}
+            variant="warning"
+            trend={8}
+            trendLabel="Cette semaine"
+            animated={true}
+          >
+            <div className="flex gap-2">
+              <Badge variant="outline" className="text-xs">7 fois</Badge>
+              <Badge variant="outline" className="text-xs">Chaud</Badge>
+            </div>
+          </AdvancedStatsCard>
+          <AdvancedStatsCard
             title="Prochain Tirage"
-            value="2h 15m"
+            value={stats.nextDrawTime}
             description="Émergence - Mardi"
             icon={Clock}
-          />
+            variant="primary"
+            animated={true}
+          >
+            <Button size="sm" variant="outline" className="w-full mt-2">
+              <Zap className="h-3 w-3 mr-1" />
+              Prédire
+            </Button>
+          </AdvancedStatsCard>
         </div>
 
         {/* Tirages du jour */}

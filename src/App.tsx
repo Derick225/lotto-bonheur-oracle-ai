@@ -6,6 +6,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { SearchBar } from "@/components/SearchBar";
+import { FavoritesManager } from "@/components/FavoritesManager";
+import { NotificationCenter } from "@/components/NotificationCenter";
 import { Menu } from "lucide-react";
 import Index from "./pages/Index";
 import { DrawDataPage } from "./pages/DrawDataPage";
@@ -35,6 +39,22 @@ const App = () => (
                   <SidebarTrigger className="p-2" />
                   <div className="h-6 w-px bg-border mx-2" />
                   <h2 className="font-semibold text-foreground">Lotto Bonheur Oracle AI</h2>
+                </div>
+                
+                {/* Controles header */}
+                <div className="flex items-center gap-2">
+                  <div className="hidden md:block">
+                    <SearchBar 
+                      placeholder="Rechercher..."
+                      onSearch={(query, filters) => {
+                        console.log('Recherche:', query, filters);
+                        // TODO: Implémenter la logique de recherche
+                      }}
+                    />
+                  </div>
+                  <FavoritesManager />
+                  <NotificationCenter />
+                  <ThemeToggle />
                 </div>
               </header>
 
