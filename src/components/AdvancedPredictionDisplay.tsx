@@ -254,37 +254,6 @@ export function AdvancedPredictionDisplay({
                 </div>
               </div>
             )}
-                      <span className="font-mono">
-                        {(prediction.metadata.modelMetrics.accuracy * 100).toFixed(1)}%
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>F1-Score:</span>
-                      <span className="font-mono">
-                        {(prediction.metadata.modelMetrics.f1Score * 100).toFixed(1)}%
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Rappel:</span>
-                      <span className="font-mono">
-                        {(prediction.metadata.modelMetrics.recall * 100).toFixed(1)}%
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Log Loss:</span>
-                      <span className="font-mono">
-                        {prediction.metadata.modelMetrics.logLoss.toFixed(3)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Clock className="h-3 w-3" />
-                Dernière mise à jour: {prediction.metadata.lastUpdate.toLocaleString()}
-              </div>
-            </div>
           </TabsContent>
 
           <TabsContent value="bayesian" className="space-y-4">
