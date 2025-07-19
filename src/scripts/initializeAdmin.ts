@@ -12,7 +12,33 @@ import { NotificationService } from '../services/notificationService';
 import { SecurityService } from '../services/securityService';
 
 /**
- * Configuration d'initialisation
+ * Types pour les événements de sécurité
+ */
+enum SecurityEventType {
+  LOGIN_SUCCESS = 'login_success',
+  LOGIN_FAILURE = 'login_failure',
+  SYSTEM_RESET = 'system_reset'
+}
+
+/**
+ * Types pour les sauvegardes
+ */
+enum BackupType {
+  FULL = 'full',
+  INCREMENTAL = 'incremental'
+}
+
+/**
+ * Types pour les notifications
+ */
+enum NotificationType {
+  INFO = 'info',
+  WARNING = 'warning',
+  ERROR = 'error'
+}
+
+/**
+ * Interface pour la configuration d'initialisation
  */
 interface InitConfig {
   adminUser: {
@@ -28,13 +54,43 @@ interface InitConfig {
 }
 
 /**
+ * Interface pour l'utilisateur
+ */
+interface User {
+  id: string;
+  username: string;
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  role: UserRole;
+  isActive: boolean;
+  securitySettings: {
+    twoFactorEnabled: boolean;
+    lastPasswordChange: Date;
+    failedLoginAttempts: number;
+    accountLocked: boolean;
+  };
+}
+
+/**
+ * Classe d'erreur personnalisée pour l'initialisation
+ */
+class AdminInitializationError extends Error {
+  constructor(message: string, public readonly code: string) {
+    super(message);
+    this.name = 'AdminInitializationError';
+  }
+}
+
+/**
  * Configuration par défaut
  */
 const DEFAULT_CONFIG: InitConfig = {
   adminUser: {
     username: 'admin',
     email: 'admin@loterie-oracle.com',
-    password: 'Admin123!',
+    password: process.env.ADMIN_DEFAULT_PASSWORD || 'Admin123!', // À remplacer par une variable d'environnement
     firstName: 'Administrateur',
     lastName: 'Système'
   },
@@ -51,7 +107,49 @@ export class AdminInitializer {
   private initLog: string[] = [];
 
   constructor(config: Partial<InitConfig> = {}) {
+    this.validateConfig(config);
     this.config = { ...DEFAULT_CONFIG, ...config };
+  }
+
+  /**
+   * Valide la configuration fournie
+   */
+  private validateConfig(config: Partial<InitConfig>): void {
+    if (config.adminUser) {
+      if (!config.adminUser.email.includes('@')) {
+        throw new AdminInitializationError('Email administrateur invalide', 'INVALID_EMAIL');
+      }
+      if (config.adminUser.password.length < 8) {
+        throw new AdminInitializationError('Mot de passe administrateur trop court', 'INVALID_PASSWORD');
+      }
+      if (!config.adminUser.username) {
+        throw new AdminInitializationError('Nom d\'utilisateur administrateur requis', 'INVALID_USERNAME');
+      }
+    }
+  }
+
+  /**
+   * Exécute une opération avec des tentatives de réessai
+   */
+  private async withRetry<T>(
+    operation: () => Promise<T>,
+    maxAttempts: number = 3,
+    delayMs: number = 1000
+  ): Promise<T> {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        if (attempt === maxAttempts) {
+          throw new AdminInitializationError(
+            `Échec après ${maxAttempts} tentatives: ${error.message}`,
+            'RETRY_EXHAUSTED'
+          );
+        }
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+    throw new AdminInitializationError('Échec inattendu des retries', 'UNEXPECTED_RETRY_FAILURE');
   }
 
   /**
@@ -62,40 +160,31 @@ export class AdminInitializer {
     this.log('Début de l\'initialisation du système d\'administration');
 
     try {
-      // Étape 1: Initialiser les services de base
-      await this.initializeBaseServices();
+      const steps = [
+        () => this.initializeBaseServices(),
+        () => this.createAdminUser(),
+        () => this.setupSystemConfiguration(),
+        () => this.config.createSampleData ? this.createSampleData() : Promise.resolve(),
+        () => this.config.enableAutoBackup ? this.setupAutoBackup() : Promise.resolve(),
+        () => this.config.setupNotifications ? this.setupNotifications() : Promise.resolve(),
+        () => this.verifyInstallation()
+      ];
 
-      // Étape 2: Créer l'utilisateur administrateur
-      await this.createAdminUser();
-
-      // Étape 3: Configurer les paramètres système
-      await this.setupSystemConfiguration();
-
-      // Étape 4: Créer les données d'exemple
-      if (this.config.createSampleData) {
-        await this.createSampleData();
+      for (const [index, step] of steps.entries()) {
+        this.log(`Exécution de l'étape ${index + 1}/${steps.length}`);
+        await this.withRetry(step);
       }
-
-      // Étape 5: Configurer les sauvegardes automatiques
-      if (this.config.enableAutoBackup) {
-        await this.setupAutoBackup();
-      }
-
-      // Étape 6: Configurer les notifications
-      if (this.config.setupNotifications) {
-        await this.setupNotifications();
-      }
-
-      // Étape 7: Vérifier l'installation
-      await this.verifyInstallation();
 
       console.log('✅ Initialisation terminée avec succès !');
       this.log('Initialisation terminée avec succès');
 
     } catch (error) {
-      console.error('❌ Erreur lors de l\'initialisation:', error);
-      this.log(`Erreur lors de l'initialisation: ${error}`);
-      throw error;
+      const initError = error instanceof AdminInitializationError 
+        ? error 
+        : new AdminInitializationError(`Échec de l'initialisation: ${error.message}`, 'INIT_FAILED');
+      console.error('❌ Erreur lors de l\'initialisation:', initError);
+      this.log(`Erreur lors de l'initialisation: ${initError.message}`);
+      throw initError;
     }
   }
 
@@ -106,28 +195,27 @@ export class AdminInitializer {
     this.log('Initialisation des services de base...');
 
     try {
-      // Initialiser les services dans l'ordre de dépendance
-      await UserManagementService.initialize();
+      await this.withRetry(() => UserManagementService.initialize());
       this.log('✓ UserManagementService initialisé');
 
-      AuditService.initialize();
+      await this.withRetry(() => AuditService.initialize());
       this.log('✓ AuditService initialisé');
 
-      SecurityService.initialize();
+      await this.withRetry(() => SecurityService.initialize());
       this.log('✓ SecurityService initialisé');
 
-      await SystemConfigService.initialize();
+      await this.withRetry(() => SystemConfigService.initialize());
       this.log('✓ SystemConfigService initialisé');
 
-      await BackupService.initialize();
+      await this.withRetry(() => BackupService.initialize());
       this.log('✓ BackupService initialisé');
 
-      await NotificationService.initialize();
+      await this.withRetry(() => NotificationService.initialize());
       this.log('✓ NotificationService initialisé');
 
     } catch (error) {
-      this.log(`Erreur lors de l'initialisation des services: ${error}`);
-      throw new Error(`Échec de l'initialisation des services: ${error}`);
+      this.log(`Erreur lors de l'initialisation des services: ${error.message}`);
+      throw new AdminInitializationError(`Échec de l'initialisation des services: ${error.message}`, 'SERVICE_INIT_FAILED');
     }
   }
 
@@ -138,8 +226,7 @@ export class AdminInitializer {
     this.log('Création de l\'utilisateur administrateur...');
 
     try {
-      // Vérifier si un admin existe déjà
-      const existingUsers = UserManagementService.getUsers();
+      const existingUsers = UserManagementService.getUsers() || [];
       const existingAdmin = existingUsers.find(u => u.role === UserRole.ADMIN);
 
       if (existingAdmin) {
@@ -147,8 +234,7 @@ export class AdminInitializer {
         return;
       }
 
-      // Créer l'utilisateur administrateur
-      const adminUser = await UserManagementService.createUser({
+      const adminUser = await this.withRetry(() => UserManagementService.createUser({
         username: this.config.adminUser.username,
         email: this.config.adminUser.email,
         password: this.config.adminUser.password,
@@ -156,26 +242,24 @@ export class AdminInitializer {
         lastName: this.config.adminUser.lastName,
         role: UserRole.ADMIN,
         isActive: true
-      });
+      }));
 
       this.log(`✓ Utilisateur administrateur créé: ${adminUser.username}`);
 
-      // Activer toutes les permissions pour l'admin
-      await UserManagementService.updateUser(adminUser.id, {
+      await this.withRetry(() => UserManagementService.updateUser(adminUser.id, {
         securitySettings: {
-          ...adminUser.securitySettings,
-          twoFactorEnabled: false, // Désactivé par défaut, peut être activé manuellement
+          twoFactorEnabled: false,
           lastPasswordChange: new Date(),
           failedLoginAttempts: 0,
           accountLocked: false
         }
-      });
+      }));
 
       this.log('✓ Permissions administrateur configurées');
 
     } catch (error) {
-      this.log(`Erreur lors de la création de l'administrateur: ${error}`);
-      throw new Error(`Échec de la création de l'administrateur: ${error}`);
+      this.log(`Erreur lors de la création de l'administrateur: ${error.message}`);
+      throw new AdminInitializationError(`Échec de la création de l'administrateur: ${error.message}`, 'ADMIN_CREATION_FAILED');
     }
   }
 
@@ -186,8 +270,7 @@ export class AdminInitializer {
     this.log('Configuration des paramètres système...');
 
     try {
-      // Configuration de sécurité renforcée
-      await SystemConfigService.updateConfigSection('security', {
+      await this.withRetry(() => SystemConfigService.updateConfigSection('security', {
         passwordPolicy: {
           minLength: 8,
           requireUppercase: true,
@@ -197,7 +280,7 @@ export class AdminInitializer {
           maxAge: 90,
           preventReuse: 5
         },
-        twoFactorRequired: false, // Peut être activé manuellement
+        twoFactorRequired: false,
         maxLoginAttempts: 5,
         lockoutDuration: 30,
         sessionSecurity: {
@@ -210,12 +293,11 @@ export class AdminInitializer {
           requestsPerMinute: 60,
           burstLimit: 10
         }
-      }, 'Configuration initiale du système');
+      }, 'Configuration initiale du système'));
 
       this.log('✓ Configuration de sécurité appliquée');
 
-      // Configuration des prédictions
-      await SystemConfigService.updateConfigSection('predictions', {
+      await this.withRetry(() => SystemConfigService.updateConfigSection('predictions', {
         algorithms: {
           xgboost: {
             enabled: true,
@@ -249,12 +331,11 @@ export class AdminInitializer {
           cacheEnabled: true,
           cacheTTL: 60
         }
-      }, 'Configuration initiale des prédictions');
+      }, 'Configuration initiale des prédictions'));
 
       this.log('✓ Configuration des prédictions appliquée');
 
-      // Configuration du monitoring
-      await SystemConfigService.updateConfigSection('monitoring', {
+      await this.withRetry(() => SystemConfigService.updateConfigSection('monitoring', {
         alerts: {
           performanceThreshold: 5000,
           errorRateThreshold: 5,
@@ -263,7 +344,7 @@ export class AdminInitializer {
         },
         notifications: {
           email: {
-            enabled: false, // À configurer manuellement
+            enabled: false,
             smtpServer: '',
             smtpPort: 587,
             username: '',
@@ -287,13 +368,13 @@ export class AdminInitializer {
           auditRetentionDays: 365,
           metricsRetentionDays: 30
         }
-      }, 'Configuration initiale du monitoring');
+      }, 'Configuration initiale du monitoring'));
 
       this.log('✓ Configuration du monitoring appliquée');
 
     } catch (error) {
-      this.log(`Erreur lors de la configuration système: ${error}`);
-      throw new Error(`Échec de la configuration système: ${error}`);
+      this.log(`Erreur lors de la configuration système: ${error.message}`);
+      throw new AdminInitializationError(`Échec de la configuration système: ${error.message}`, 'CONFIG_FAILED');
     }
   }
 
@@ -304,7 +385,6 @@ export class AdminInitializer {
     this.log('Création des données d\'exemple...');
 
     try {
-      // Créer des utilisateurs d'exemple
       const sampleUsers = [
         {
           username: 'analyste1',
@@ -312,7 +392,8 @@ export class AdminInitializer {
           password: 'Analyste123!',
           firstName: 'Jean',
           lastName: 'Dupont',
-          role: UserRole.ANALYST
+          role: UserRole.ANALYST,
+          isActive: true
         },
         {
           username: 'user1',
@@ -320,37 +401,36 @@ export class AdminInitializer {
           password: 'User123!',
           firstName: 'Marie',
           lastName: 'Martin',
-          role: UserRole.USER
+          role: UserRole.USER,
+          isActive: true
         }
       ];
 
       for (const userData of sampleUsers) {
         try {
-          await UserManagementService.createUser(userData);
+          await this.withRetry(() => UserManagementService.createUser(userData));
           this.log(`✓ Utilisateur d'exemple créé: ${userData.username}`);
         } catch (error) {
-          // Ignorer si l'utilisateur existe déjà
           if (!error.message.includes('existe déjà')) {
             throw error;
           }
+          this.log(`Utilisateur ${userData.username} existe déjà, création ignorée`);
         }
       }
 
-      // Créer des événements de sécurité d'exemple
-      SecurityService.logSecurityEvent(
-        'login_success' as any,
+      await this.withRetry(() => SecurityService.logSecurityEvent(
+        SecurityEventType.LOGIN_SUCCESS,
         { message: 'Connexion réussie lors de l\'initialisation' },
         '127.0.0.1',
         'Admin Initializer',
         'admin-init',
         'Système'
-      );
+      ));
 
       this.log('✓ Données d\'exemple créées');
 
     } catch (error) {
-      this.log(`Erreur lors de la création des données d'exemple: ${error}`);
-      // Ne pas faire échouer l'initialisation pour les données d'exemple
+      this.log(`Erreur lors de la création des données d'exemple: ${error.message}`);
       console.warn('Avertissement: Impossible de créer les données d\'exemple:', error);
     }
   }
@@ -362,24 +442,18 @@ export class AdminInitializer {
     this.log('Configuration des sauvegardes automatiques...');
 
     try {
-      // Créer une sauvegarde initiale
-      await BackupService.createBackup({
-        type: 'full' as any,
+      await this.withRetry(() => BackupService.createBackup({
+        type: BackupType.FULL,
         description: 'Sauvegarde initiale du système',
         compression: true,
         encryption: false
-      });
+      }));
 
       this.log('✓ Sauvegarde initiale créée');
-
-      // Les tâches de maintenance sont automatiquement configurées
-      // lors de l'initialisation du BackupService
-
       this.log('✓ Sauvegardes automatiques configurées');
 
     } catch (error) {
-      this.log(`Erreur lors de la configuration des sauvegardes: ${error}`);
-      // Ne pas faire échouer l'initialisation pour les sauvegardes
+      this.log(`Erreur lors de la configuration des sauvegardes: ${error.message}`);
       console.warn('Avertissement: Impossible de configurer les sauvegardes:', error);
     }
   }
@@ -391,21 +465,16 @@ export class AdminInitializer {
     this.log('Configuration des notifications...');
 
     try {
-      // Les templates par défaut sont créés automatiquement
-      // lors de l'initialisation du SystemConfigService
-
-      // Envoyer une notification de test
-      await NotificationService.sendSystemAlert(
-        'info' as any,
+      await this.withRetry(() => NotificationService.sendSystemAlert(
+        NotificationType.INFO,
         'Système d\'administration initialisé',
         'Le système d\'administration a été configuré avec succès et est prêt à être utilisé.'
-      );
+      ));
 
       this.log('✓ Notifications configurées et testées');
 
     } catch (error) {
-      this.log(`Erreur lors de la configuration des notifications: ${error}`);
-      // Ne pas faire échouer l'initialisation pour les notifications
+      this.log(`Erreur lors de la configuration des notifications: ${error.message}`);
       console.warn('Avertissement: Impossible de configurer les notifications:', error);
     }
   }
@@ -417,30 +486,27 @@ export class AdminInitializer {
     this.log('Vérification de l\'installation...');
 
     try {
-      // Vérifier que l'admin existe
-      const users = UserManagementService.getUsers();
+      const users = UserManagementService.getUsers() || [];
       const admin = users.find(u => u.role === UserRole.ADMIN);
       if (!admin) {
-        throw new Error('Aucun utilisateur administrateur trouvé');
+        throw new AdminInitializationError('Aucun utilisateur administrateur trouvé', 'NO_ADMIN_FOUND');
       }
 
-      // Vérifier la configuration
       const config = SystemConfigService.getConfig();
       if (!config) {
-        throw new Error('Configuration système non trouvée');
+        throw new AdminInitializationError('Configuration système non trouvée', 'NO_CONFIG_FOUND');
       }
 
-      // Vérifier les services
       const stats = SecurityService.getSecurityStatistics();
       if (!stats) {
-        throw new Error('Service de sécurité non fonctionnel');
+        throw new AdminInitializationError('Service de sécurité non fonctionnel', 'SECURITY_SERVICE_FAILED');
       }
 
       this.log('✓ Vérification réussie - Système opérationnel');
 
     } catch (error) {
-      this.log(`Erreur lors de la vérification: ${error}`);
-      throw new Error(`Échec de la vérification: ${error}`);
+      this.log(`Erreur lors de la vérification: ${error.message}`);
+      throw new AdminInitializationError(`Échec de la vérification: ${error.message}`, 'VERIFICATION_FAILED');
     }
   }
 
@@ -483,7 +549,7 @@ export async function initializeAdminSystem(config?: Partial<InitConfig>): Promi
  */
 export function isAdminSystemInitialized(): boolean {
   try {
-    const users = UserManagementService.getUsers();
+    const users = UserManagementService.getUsers() || [];
     return users.some(u => u.role === UserRole.ADMIN);
   } catch (error) {
     return false;
@@ -493,20 +559,32 @@ export function isAdminSystemInitialized(): boolean {
 /**
  * Fonction pour réinitialiser le système (ATTENTION: Supprime toutes les données)
  */
-export async function resetAdminSystem(): Promise<void> {
+export async function resetAdminSystem(confirmationToken: string): Promise<void> {
   console.warn('⚠️ ATTENTION: Réinitialisation du système d\'administration');
-  
-  // Cette fonction devrait être utilisée uniquement en développement
+
   if (process.env.NODE_ENV === 'production') {
-    throw new Error('La réinitialisation n\'est pas autorisée en production');
+    throw new AdminInitializationError('La réinitialisation n\'est pas autorisée en production', 'PROD_RESET_BLOCKED');
   }
 
-  // Effacer les données stockées
-  localStorage.clear();
-  sessionStorage.clear();
+  if (confirmationToken !== process.env.RESET_CONFIRMATION_TOKEN) {
+    throw new AdminInitializationError('Token de confirmation invalide', 'INVALID_TOKEN');
+  }
 
-  // Réinitialiser
-  await initializeAdminSystem();
+  try {
+    await AuditService.logEvent({
+      type: SecurityEventType.SYSTEM_RESET,
+      description: 'Réinitialisation complète du système',
+      user: 'system',
+      timestamp: new Date()
+    });
+
+    localStorage.clear();
+    sessionStorage.clear();
+
+    await initializeAdminSystem();
+  } catch (error) {
+    throw new AdminInitializationError(`Échec de la réinitialisation: ${error.message}`, 'RESET_FAILED');
+  }
 }
 
 // Export par défaut
