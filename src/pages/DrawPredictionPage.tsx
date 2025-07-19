@@ -177,90 +177,110 @@ export function DrawPredictionPage() {
 
         <div className="grid gap-8">
           {/* Prédiction principale */}
-          <Card className="gradient-card border-border">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-foreground">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                  Numéros prédits pour le prochain tirage
-                </CardTitle>
-                <Badge 
-                  variant="outline" 
-                  className={`
-                    ${prediction.confidence > 0.8 ? 'border-green-400 text-green-400' : 
-                      prediction.confidence > 0.6 ? 'border-yellow-400 text-yellow-400' : 
-                      'border-red-400 text-red-400'}
-                  `}
-                >
-                  Confiance: {(prediction.confidence * 100).toFixed(1)}%
-                </Badge>
+          {prediction ? (
+            <>
+              <Card className="gradient-card border-border">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2 text-foreground">
+                      <TrendingUp className="h-5 w-5 text-primary" />
+                      Numéros prédits pour le prochain tirage
+                    </CardTitle>
+                    <Badge 
+                      variant="outline" 
+                      className={`
+                        ${prediction.confidence > 0.8 ? 'border-green-400 text-green-400' : 
+                          prediction.confidence > 0.6 ? 'border-yellow-400 text-yellow-400' : 
+                          'border-red-400 text-red-400'}
+                      `}
+                    >
+                      Confiance: {(prediction.confidence * 100).toFixed(1)}%
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex gap-3 justify-center">
+                    {prediction.numbers.map((item, index) => (
+                      <div key={index} className="text-center space-y-2">
+                        <LotteryNumber number={item.number} />
+                        <div className="text-xs text-muted-foreground">
+                          {(item.probability * 100).toFixed(1)}%
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="text-center text-sm text-muted-foreground">
+                    Algorithme utilisé: <span className="text-primary font-medium">{prediction.algorithm}</span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Détails de l'algorithme */}
+              <div className="grid md:grid-cols-2 gap-6">
+                <Card className="gradient-card border-border">
+                  <CardHeader>
+                    <CardTitle className="text-foreground">Caractéristiques analysées</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {prediction.features.map((feature, index) => (
+                        <div key={index} className="flex items-center gap-3">
+                          <div className="w-2 h-2 bg-primary rounded-full" />
+                          <span className="text-foreground">{feature}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="gradient-card border-border">
+                  <CardHeader>
+                    <CardTitle className="text-foreground">Méthode hybride</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-foreground">XGBoost</span>
+                        <Badge variant="outline">Patterns tabulaires</Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-foreground">RNN-LSTM</span>
+                        <Badge variant="outline">Séquences temporelles</Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-foreground">Ensemble</span>
+                        <Badge variant="outline">Fusion intelligente</Badge>
+                      </div>
+                    </div>
+                    
+                    <div className="pt-4 border-t border-border">
+                      <p className="text-sm text-muted-foreground">
+                        Les prédictions combinent l'analyse des patterns historiques 
+                        avec les tendances temporelles pour optimiser la précision.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex gap-3 justify-center">
-                {prediction.numbers.map((item, index) => (
-                  <div key={index} className="text-center space-y-2">
-                    <LotteryNumber number={item.number} />
-                    <div className="text-xs text-muted-foreground">
-                      {(item.probability * 100).toFixed(1)}%
+            </>
+          ) : (
+            !loading && !error && (
+              <Card className="gradient-card border-border">
+                <CardContent className="py-12">
+                  <div className="text-center space-y-4">
+                    <Brain className="h-12 w-12 text-muted-foreground mx-auto" />
+                    <div>
+                      <h3 className="text-lg font-semibold text-foreground">Aucune prédiction disponible</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Cliquez sur "Générer Prédiction" pour commencer l'analyse
+                      </p>
                     </div>
                   </div>
-                ))}
-              </div>
-              
-              <div className="text-center text-sm text-muted-foreground">
-                Algorithme utilisé: <span className="text-primary font-medium">{prediction.algorithm}</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Détails de l'algorithme */}
-          <div className="grid md:grid-cols-2 gap-6">
-            <Card className="gradient-card border-border">
-              <CardHeader>
-                <CardTitle className="text-foreground">Caractéristiques analysées</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {prediction.features.map((feature, index) => (
-                    <div key={index} className="flex items-center gap-3">
-                      <div className="w-2 h-2 bg-primary rounded-full" />
-                      <span className="text-foreground">{feature}</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="gradient-card border-border">
-              <CardHeader>
-                <CardTitle className="text-foreground">Méthode hybride</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-foreground">XGBoost</span>
-                    <Badge variant="outline">Patterns tabulaires</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-foreground">RNN-LSTM</span>
-                    <Badge variant="outline">Séquences temporelles</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-foreground">Ensemble</span>
-                    <Badge variant="outline">Fusion intelligente</Badge>
-                  </div>
-                </div>
-                
-                <div className="pt-4 border-t border-border">
-                  <p className="text-sm text-muted-foreground">
-                    Les prédictions combinent l'analyse des patterns historiques 
-                    avec les tendances temporelles pour optimiser la précision.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                </CardContent>
+              </Card>
+            )
+          )}
 
           {/* Avertissement */}
           <Card className="gradient-card border-border border-yellow-500/50">
