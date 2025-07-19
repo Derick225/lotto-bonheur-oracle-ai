@@ -1,0 +1,294 @@
+{
+  "general": {
+    "appName": "Loterie Oracle AI",
+    "version": "1.0.0",
+    "environment": "development",
+    "maxUsers": 1000,
+    "sessionTimeout": 480,
+    "timezone": "Europe/Paris",
+    "maintenanceMode": false,
+    "debugMode": true
+  },
+  "security": {
+    "passwordPolicy": {
+      "minLength": 8,
+      "requireUppercase": true,
+      "requireLowercase": true,
+      "requireNumbers": true,
+      "requireSpecialChars": true,
+      "maxAge": 90,
+      "preventReuse": 5
+    },
+    "twoFactorRequired": false,
+    "maxLoginAttempts": 5,
+    "lockoutDuration": 30,
+    "sessionSecurity": {
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "strict"
+    },
+    "rateLimiting": {
+      "enabled": true,
+      "requestsPerMinute": 60,
+      "burstLimit": 10
+    },
+    "encryption": {
+      "algorithm": "AES-256-GCM",
+      "keyRotationDays": 30
+    }
+  },
+  "predictions": {
+    "algorithms": {
+      "xgboost": {
+        "enabled": true,
+        "weight": 0.4,
+        "config": {
+          "sequenceLength": 15,
+          "hiddenUnits": 128,
+          "learningRate": 0.001,
+          "maxDepth": 6,
+          "nEstimators": 100
+        }
+      },
+      "rnnLstm": {
+        "enabled": true,
+        "weight": 0.4,
+        "config": {
+          "sequenceLength": 20,
+          "hiddenUnits": 256,
+          "learningRate": 0.0005,
+          "dropout": 0.2,
+          "layers": 2
+        }
+      },
+      "hybrid": {
+        "enabled": true,
+        "strategy": "weighted",
+        "weight": 0.2
+      }
+    },
+    "dataRetention": {
+      "maxHistoryDays": 365,
+      "cleanupFrequency": 24,
+      "archiveAfterDays": 180
+    },
+    "performance": {
+      "maxPredictionTime": 30,
+      "cacheEnabled": true,
+      "cacheTTL": 60,
+      "batchSize": 32,
+      "maxConcurrentPredictions": 10
+    },
+    "validation": {
+      "crossValidationFolds": 5,
+      "testSplitRatio": 0.2,
+      "validationMetrics": ["accuracy", "precision", "recall", "f1"]
+    }
+  },
+  "monitoring": {
+    "alerts": {
+      "performanceThreshold": 5000,
+      "errorRateThreshold": 5,
+      "memoryThreshold": 80,
+      "diskSpaceThreshold": 90,
+      "cpuThreshold": 85,
+      "responseTimeThreshold": 2000
+    },
+    "notifications": {
+      "email": {
+        "enabled": false,
+        "smtpServer": "smtp.example.com",
+        "smtpPort": 587,
+        "username": "notifications@example.com",
+        "password": "",
+        "fromAddress": "Loterie Oracle AI <noreply@example.com>",
+        "encryption": "STARTTLS"
+      },
+      "sms": {
+        "enabled": false,
+        "provider": "twilio",
+        "apiKey": "",
+        "apiSecret": "",
+        "fromNumber": "+1234567890"
+      },
+      "webhook": {
+        "enabled": false,
+        "url": "https://hooks.slack.com/services/...",
+        "secret": "",
+        "timeout": 10
+      },
+      "push": {
+        "enabled": true,
+        "vapidPublicKey": "",
+        "vapidPrivateKey": ""
+      }
+    },
+    "retention": {
+      "logRetentionDays": 90,
+      "auditRetentionDays": 365,
+      "metricsRetentionDays": 30,
+      "errorLogRetentionDays": 180
+    },
+    "sampling": {
+      "performanceMetricsSampleRate": 0.1,
+      "errorSampleRate": 1.0,
+      "traceSampleRate": 0.01
+    }
+  },
+  "backup": {
+    "enabled": true,
+    "schedule": {
+      "full": "0 2 * * 0",
+      "incremental": "0 2 * * 1-6",
+      "differential": "0 14 * * *"
+    },
+    "retention": {
+      "daily": 7,
+      "weekly": 4,
+      "monthly": 12,
+      "yearly": 3
+    },
+    "compression": true,
+    "encryption": false,
+    "destinations": {
+      "local": {
+        "enabled": true,
+        "path": "./backups"
+      },
+      "cloud": {
+        "enabled": false,
+        "provider": "aws-s3",
+        "bucket": "loterie-oracle-backups",
+        "region": "eu-west-1",
+        "accessKey": "",
+        "secretKey": ""
+      }
+    },
+    "verification": {
+      "enabled": true,
+      "checksumAlgorithm": "SHA-256",
+      "testRestoreFrequency": "monthly"
+    }
+  },
+  "performance": {
+    "database": {
+      "connectionPoolSize": 20,
+      "queryTimeout": 30,
+      "slowQueryThreshold": 1000,
+      "indexOptimization": true
+    },
+    "cache": {
+      "enabled": true,
+      "provider": "memory",
+      "maxSize": "100MB",
+      "ttl": 3600,
+      "compression": true
+    },
+    "api": {
+      "rateLimiting": {
+        "enabled": true,
+        "windowMs": 60000,
+        "maxRequests": 100
+      },
+      "compression": {
+        "enabled": true,
+        "threshold": 1024
+      },
+      "cors": {
+        "enabled": true,
+        "origins": ["http://localhost:3000", "http://localhost:5173"],
+        "credentials": true
+      }
+    },
+    "optimization": {
+      "minifyResponses": true,
+      "enableGzip": true,
+      "staticCaching": true,
+      "lazyLoading": true
+    }
+  },
+  "logging": {
+    "level": "info",
+    "format": "json",
+    "outputs": ["console", "file"],
+    "file": {
+      "path": "./logs",
+      "maxSize": "10MB",
+      "maxFiles": 5,
+      "rotateDaily": true
+    },
+    "categories": {
+      "security": "warn",
+      "performance": "info",
+      "audit": "info",
+      "error": "error"
+    },
+    "sensitiveFields": ["password", "token", "secret", "key"],
+    "includeStackTrace": true
+  },
+  "features": {
+    "experimentalFeatures": false,
+    "betaFeatures": false,
+    "maintenanceMode": false,
+    "readOnlyMode": false,
+    "apiVersioning": true,
+    "webhooks": true,
+    "realTimeUpdates": true,
+    "advancedAnalytics": true
+  },
+  "integrations": {
+    "analytics": {
+      "enabled": false,
+      "provider": "google-analytics",
+      "trackingId": ""
+    },
+    "errorTracking": {
+      "enabled": false,
+      "provider": "sentry",
+      "dsn": ""
+    },
+    "monitoring": {
+      "enabled": false,
+      "provider": "datadog",
+      "apiKey": ""
+    }
+  },
+  "compliance": {
+    "gdpr": {
+      "enabled": true,
+      "dataRetentionDays": 1095,
+      "anonymizationAfterDays": 2555,
+      "consentRequired": true
+    },
+    "audit": {
+      "enabled": true,
+      "detailedLogging": true,
+      "retentionYears": 7,
+      "encryptLogs": true
+    },
+    "dataProtection": {
+      "encryptAtRest": true,
+      "encryptInTransit": true,
+      "keyManagement": "internal",
+      "accessLogging": true
+    }
+  },
+  "development": {
+    "debugMode": true,
+    "verboseLogging": true,
+    "mockExternalServices": true,
+    "seedData": true,
+    "hotReload": true,
+    "sourceMapGeneration": true
+  },
+  "production": {
+    "debugMode": false,
+    "verboseLogging": false,
+    "mockExternalServices": false,
+    "seedData": false,
+    "hotReload": false,
+    "sourceMapGeneration": false,
+    "compressionLevel": 9,
+    "securityHeaders": true
+  }
+}

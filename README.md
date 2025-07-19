@@ -1,73 +1,231 @@
-# Welcome to your Lovable project
+# 🎯 Loterie Oracle AI - Système de Gestion des Tirages
 
-## Project info
+Une application web moderne et complète pour la gestion intelligente des tirages de loterie avec des fonctionnalités avancées d'analyse, de prédiction et d'administration.
 
-**URL**: https://lovable.dev/projects/902d4d9f-72c3-451a-a020-35e2d3c06213
+## 🚀 Fonctionnalités Principales
 
-## How can I edit this code?
+### ✅ **Système de Gestion des Tirages Complet**
+- **Interface CRUD intuitive** : Création, lecture, modification, suppression
+- **Édition en ligne** : Modification directe dans le tableau
+- **Import/Export par lots** : CSV, Excel, JSON avec validation
+- **Recherche et filtrage avancés** : Filtres multiples combinables
+- **Pagination intelligente** : Navigation optimisée
+- **Validation automatique** : Règles métier intégrées
+- **Historique complet** : Audit trail de toutes les modifications
 
-There are several ways of editing your application.
+### 🔧 **Intégration Supabase**
+- **Base de données temps réel** : Synchronisation automatique
+- **Authentification sécurisée** : Gestion des permissions
+- **RLS (Row Level Security)** : Sécurité au niveau des données
+- **Reconnexion automatique** : Robustesse réseau
 
-**Use Lovable**
+### 📊 **Interface Utilisateur Avancée**
+- **Design responsive** : Optimisé mobile, tablette, desktop
+- **Raccourcis clavier** : Navigation et actions rapides
+- **Notifications toast** : Feedback utilisateur immédiat
+- **Aide contextuelle** : Guide intégré (F1)
+- **Thème adaptatif** : Mode sombre/clair
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/902d4d9f-72c3-451a-a020-35e2d3c06213) and start prompting.
+## 📋 Installation Rapide
 
-Changes made via Lovable will be committed automatically to this repo.
+### Prérequis
+- Node.js 18+
+- Compte Supabase (gratuit)
 
-**Use your preferred IDE**
+### Configuration Automatique
+```bash
+# 1. Cloner le projet
+git clone <repository-url>
+cd loterie-oracle-ai
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+# 2. Installer les dépendances
+npm install
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+# 3. Configuration automatique
+npm run setup
 
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# 4. Démarrer l'application
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Configuration Manuelle
+```bash
+# 1. Copier le fichier d'environnement
+cp .env.example .env
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+# 2. Configurer vos variables Supabase dans .env
+VITE_SUPABASE_URL=https://votre-projet.supabase.co
+VITE_SUPABASE_ANON_KEY=votre-cle-anonyme
 
-**Use GitHub Codespaces**
+# 3. Initialiser Supabase
+npm run setup:supabase
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 🎯 Utilisation
 
-## What technologies are used for this project?
+### Accès au Système
+1. Démarrer l'application : `npm run dev`
+2. Ouvrir `http://localhost:5173`
+3. Aller dans **Administration** → **Tirages**
 
-This project is built with:
+### Fonctionnalités Clés
+- **Gestion quotidienne** : Interface intuitive pour tous les besoins
+- **Import massif** : Traitement par lots avec validation
+- **Export personnalisé** : Tous formats avec filtres avancés
+- **Recherche intelligente** : Filtres combinables et sauvegardés
+- **Audit complet** : Traçabilité de toutes les actions
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## 📚 Documentation
 
-## How can I deploy this project?
+- **[Guide d'Installation Complet](docs/INSTALLATION_GUIDE.md)** : Instructions détaillées
+- **[Guide Utilisateur](README_DRAW_MANAGEMENT.md)** : Utilisation rapide
+- **[Documentation Technique](docs/DRAW_MANAGEMENT.md)** : Guide complet
+- **Aide intégrée** : Appuyez sur F1 dans l'application
 
-Simply open [Lovable](https://lovable.dev/projects/902d4d9f-72c3-451a-a020-35e2d3c06213) and click on Share -> Publish.
+## 🛠️ Développement
 
-## Can I connect a custom domain to my Lovable project?
+### Scripts Disponibles
+```bash
+npm run dev          # Développement
+npm run build        # Build de production
+npm run preview      # Aperçu du build
+npm run setup        # Configuration complète
+npm run setup:env    # Configuration environnement
+npm run setup:supabase # Initialisation Supabase
+```
 
-Yes, you can!
+### Architecture
+- **Frontend** : React + TypeScript + Vite
+- **UI** : Shadcn/ui + Tailwind CSS
+- **Backend** : Supabase (PostgreSQL + Auth + RLS)
+- **État** : React Hooks + Context
+- **Validation** : Zod + React Hook Form
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## 🔒 Sécurité
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+- **Authentification Supabase** : Sessions sécurisées
+- **Permissions granulaires** : Admin/Analyste/Utilisateur
+- **RLS activé** : Protection au niveau des données
+- **Validation double** : Client et serveur
+- **Audit trail** : Traçabilité complète
+
+## 📱 Compatibilité
+
+- **Navigateurs** : Chrome, Firefox, Safari, Edge (dernières versions)
+- **Appareils** : Desktop, tablette, mobile
+- **Résolution** : Responsive design adaptatif
+
+**URL Lovable**: https://lovable.dev/projects/902d4d9f-72c3-451a-a020-35e2d3c06213
+
+## 🔧 Comment Modifier le Code ?
+
+### **Utiliser Lovable (Recommandé)**
+Visitez le [Projet Lovable](https://lovable.dev/projects/902d4d9f-72c3-451a-a020-35e2d3c06213) et commencez à développer avec l'IA.
+
+Les modifications via Lovable sont automatiquement commitées dans ce repo.
+
+### **Développement Local**
+```bash
+# 1. Cloner le repository
+git clone <YOUR_GIT_URL>
+
+# 2. Naviguer dans le projet
+cd <YOUR_PROJECT_NAME>
+
+# 3. Installer les dépendances
+npm install
+
+# 4. Configuration (première fois)
+npm run setup
+
+# 5. Démarrer le serveur de développement
+npm run dev
+```
+
+### **Édition Directe GitHub**
+- Naviguer vers le fichier désiré
+- Cliquer sur "Edit" (icône crayon)
+- Faire les modifications et committer
+
+### **GitHub Codespaces**
+- Aller sur la page principale du repository
+- Cliquer sur "Code" (bouton vert)
+- Sélectionner l'onglet "Codespaces"
+- Cliquer sur "New codespace"
+
+## 🛠️ Technologies Utilisées
+
+### **Frontend**
+- **React 18** : Framework UI moderne
+- **TypeScript** : Typage statique
+- **Vite** : Build tool ultra-rapide
+- **Tailwind CSS** : Framework CSS utilitaire
+
+### **UI/UX**
+- **Shadcn/ui** : Composants UI modernes
+- **Radix UI** : Primitives accessibles
+- **Lucide React** : Icônes cohérentes
+- **React Hook Form** : Gestion des formulaires
+
+### **Backend & Base de Données**
+- **Supabase** : Backend-as-a-Service
+- **PostgreSQL** : Base de données relationnelle
+- **Row Level Security** : Sécurité granulaire
+- **Real-time** : Synchronisation temps réel
+
+### **État & Logique**
+- **React Hooks** : Gestion d'état moderne
+- **Context API** : État global
+- **TanStack Query** : Cache et synchronisation
+- **Zod** : Validation de schémas
+
+## 🚀 Déploiement
+
+### **Déploiement Rapide**
+Ouvrir [Lovable](https://lovable.dev/projects/902d4d9f-72c3-451a-a020-35e2d3c06213) → Share → Publish
+
+### **Déploiement Manuel**
+```bash
+# Build de production
+npm run build
+
+# Déployer le dossier dist/ sur votre plateforme
+# (Vercel, Netlify, etc.)
+```
+
+### **Variables d'Environnement de Production**
+```env
+VITE_SUPABASE_URL=https://votre-projet.supabase.co
+VITE_SUPABASE_ANON_KEY=votre-cle-anonyme
+VITE_APP_ENV=production
+```
+
+## 🤝 Contribution
+
+1. **Fork** le projet
+2. **Créer** une branche feature (`git checkout -b feature/AmazingFeature`)
+3. **Committer** les changements (`git commit -m 'Add AmazingFeature'`)
+4. **Push** vers la branche (`git push origin feature/AmazingFeature`)
+5. **Ouvrir** une Pull Request
+
+## 📄 Licence
+
+Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus de détails.
+
+## 📞 Support
+
+- **Documentation** : Guides dans `/docs/`
+- **Issues** : GitHub Issues
+- **Aide intégrée** : Appuyez sur F1 dans l'application
+
+## 🔗 Domaine Personnalisé
+
+Vous pouvez connecter un domaine personnalisé à votre projet Lovable :
+
+Naviguer vers Project > Settings > Domains et cliquer sur Connect Domain.
+
+Plus d'infos : [Configuration d'un domaine personnalisé](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+
+---
+
+**🎯 Loterie Oracle AI** - *Système de gestion intelligent des tirages de loterie*
