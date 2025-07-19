@@ -1,4 +1,5 @@
-import React, { Suspense, lazy, ComponentType } from 'react';
+import { Suspense, lazy, ComponentType } from 'react';
+import * as React from 'react';
 import { useIntersectionObserver } from '@/services/performanceService';
 import { Loader2 } from 'lucide-react';
 

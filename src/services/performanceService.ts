@@ -3,7 +3,8 @@
  * Gère le lazy loading, la mémoïsation et les optimisations
  */
 
-import React, { useCallback, useMemo, useRef, useEffect } from 'react';
+import { useCallback, useMemo, useRef, useEffect } from 'react';
+import * as React from 'react';
 
 // Cache global pour la mémoïsation
 const globalCache = new Map<string, any>();
@@ -97,9 +98,9 @@ export function useLazyLoad<T>(
 // Hook pour l'intersection observer (lazy loading d'images/composants)
 export function useIntersectionObserver(
   options: IntersectionObserverInit = {}
-): [React.RefObject<HTMLElement>, boolean] {
+): [React.RefObject<HTMLDivElement>, boolean] {
   const [isIntersecting, setIsIntersecting] = React.useState(false);
-  const ref = useRef<HTMLElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const element = ref.current;

@@ -29,6 +29,8 @@ export function DrawStatsPage() {
       
       try {
         setLoading(true);
+        // Import dynamique pour éviter les erreurs de compilation
+        const { LotteryAPIService } = await import('@/services/lotteryAPI');
         const statistics = await LotteryAPIService.getDrawStatistics(drawName);
         setStats(statistics);
       } catch (error) {
