@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LotteryNumber } from '@/components/LotteryNumber';
 import { PredictionResult } from '@/services/predictionService';
+import { AdvancedMetricsDisplay } from '@/components/AdvancedMetricsDisplay';
 import { 
   Brain, 
   TrendingUp, 
@@ -222,31 +223,37 @@ export function AdvancedPredictionDisplay({
           </TabsContent>
 
           <TabsContent value="metrics" className="space-y-4">
-            <div className="grid gap-4">
-              <h4 className="font-medium">Métriques du Modèle</h4>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <Card>
-                  <CardContent className="pt-4">
-                    <div className="text-2xl font-bold">{prediction.metadata.dataPoints}</div>
-                    <p className="text-xs text-muted-foreground">Points de données</p>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardContent className="pt-4">
-                    <div className="text-2xl font-bold">{prediction.metadata.modelVersion}</div>
-                    <p className="text-xs text-muted-foreground">Version du modèle</p>
-                  </CardContent>
-                </Card>
-              </div>
+            {prediction.metadata?.modelMetrics ? (
+              <AdvancedMetricsDisplay
+                metrics={prediction.metadata.modelMetrics}
+                modelName={prediction.algorithm}
+                isLoading={false}
+              />
+            ) : (
+              <div className="grid gap-4">
+                <h4 className="font-medium">Métriques du Modèle</h4>
 
-              {prediction.metadata?.modelMetrics && (
-                <div className="space-y-2">
-                  <h5 className="font-medium text-sm">Performance</h5>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div className="flex justify-between">
-                      <span>Précision:</span>
+                <div className="grid grid-cols-2 gap-4">
+                  <Card>
+                    <CardContent className="pt-4">
+                      <div className="text-2xl font-bold">{prediction.metadata.dataPoints}</div>
+                      <p className="text-xs text-muted-foreground">Points de données</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="pt-4">
+                      <div className="text-2xl font-bold">{prediction.metadata.modelVersion}</div>
+                      <p className="text-xs text-muted-foreground">Version du modèle</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="text-center py-8 text-muted-foreground">
+                  Métriques avancées non disponibles pour cette prédiction
+                </div>
+              </div>
+            )}
                       <span className="font-mono">
                         {(prediction.metadata.modelMetrics.accuracy * 100).toFixed(1)}%
                       </span>
