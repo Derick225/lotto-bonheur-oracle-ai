@@ -42,11 +42,28 @@ export interface UserPreferences {
   lastViewedDraw?: string;
 }
 
+// Interface pour les résultats d'optimisation
+export interface OptimizationResults {
+  id?: number;
+  timestamp: string;
+  xgboost: {
+    bestScore: number;
+    bestConfig: any;
+    convergenceHistory: number[];
+  };
+  lstm: {
+    bestScore: number;
+    bestConfig: any;
+    convergenceHistory: number[];
+  };
+}
+
 class LotteryDatabase extends Dexie {
   drawResults!: Table<DrawResult>;
   predictions!: Table<PredictionResult>;
   statistics!: Table<CachedStatistics>;
   preferences!: Table<UserPreferences>;
+  optimizations!: Table<OptimizationResults>;
 
   constructor() {
     super('LotteryAnalysisDB');
@@ -55,6 +72,15 @@ class LotteryDatabase extends Dexie {
       predictions: '++id, drawName, date, numbers, confidence, algorithm, features, createdAt',
       statistics: '++id, drawName, frequency, lastAppearance, trends, coOccurrences, updatedAt',
       preferences: 'id, favoriteDraws, notificationsEnabled, theme, language, lastViewedDraw'
+    });
+
+    // Version 2 pour ajouter la table optimizations
+    this.version(2).stores({
+      drawResults: '++id, draw_name, date, gagnants, machine, day, time',
+      predictions: '++id, drawName, date, numbers, confidence, algorithm, features, createdAt',
+      statistics: '++id, drawName, frequency, lastAppearance, trends, coOccurrences, updatedAt',
+      preferences: 'id, favoriteDraws, notificationsEnabled, theme, language, lastViewedDraw',
+      optimizations: '++id, timestamp, xgboost, lstm'
     });
   }
 }
@@ -336,14 +362,58 @@ export class IndexedDBService {
     };
   }
 
+  // Gestion des résultats d'optimisation
+  static async saveOptimizationResults(results: OptimizationResults): Promise<void> {
+    try {
+      await db.optimizations.put(results);
+      console.log('💾 Résultats d\'optimisation sauvegardés dans IndexedDB');
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde des résultats d\'optimisation:', error);
+      throw error;
+    }
+  }
+
+  static async getLatestOptimizationResults(): Promise<OptimizationResults | undefined> {
+    try {
+      return await db.optimizations.orderBy('timestamp').last();
+    } catch (error) {
+      console.error('Erreur lors de la récupération des résultats d\'optimisation:', error);
+      return undefined;
+    }
+  }
+
+  static async getAllOptimizationResults(): Promise<OptimizationResults[]> {
+    try {
+      return await db.optimizations.orderBy('timestamp').reverse().toArray();
+    } catch (error) {
+      console.error('Erreur lors de la récupération de l\'historique d\'optimisation:', error);
+      return [];
+    }
+  }
+
+  static async deleteOldOptimizationResults(keepCount: number = 10): Promise<void> {
+    try {
+      const allResults = await db.optimizations.orderBy('timestamp').reverse().toArray();
+      if (allResults.length > keepCount) {
+        const toDelete = allResults.slice(keepCount);
+        const idsToDelete = toDelete.map(r => r.id!).filter(id => id !== undefined);
+        await db.optimizations.bulkDelete(idsToDelete);
+        console.log(`🗑️ Supprimé ${idsToDelete.length} anciens résultats d'optimisation`);
+      }
+    } catch (error) {
+      console.error('Erreur lors du nettoyage des résultats d\'optimisation:', error);
+    }
+  }
+
   // Nettoyage automatique des anciennes données
   static async cleanOldData(daysToKeep: number = 90): Promise<void> {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
-    
+
     await Promise.all([
       db.predictions.where('createdAt').below(cutoffDate).delete(),
-      db.statistics.where('updatedAt').below(cutoffDate).delete()
+      db.statistics.where('updatedAt').below(cutoffDate).delete(),
+      this.deleteOldOptimizationResults(10) // Garder les 10 derniers résultats d'optimisation
     ]);
   }
 }

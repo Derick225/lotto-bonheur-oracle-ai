@@ -3,6 +3,7 @@ import { XGBoostModel } from './xgboostModel';
 import { RNNLSTMModel } from './rnnLstmModel';
 import { FeatureEngineering, MLPrediction, ModelMetrics } from './mlModels';
 import { IndexedDBService } from './indexedDBService';
+import { EnsembleOptimizer, HyperparameterConfig, EnsembleConfig } from './ensembleOptimizer';
 
 // Interface pour les prédictions améliorée
 export interface PredictionResult {
@@ -301,35 +302,140 @@ export class PredictionService {
   private static xgboostModel: XGBoostModel | null = null;
   private static rnnLstmModel: RNNLSTMModel | null = null;
   private static isInitialized: boolean = false;
+  private static isOptimized: boolean = false;
+  private static ensembleConfig: EnsembleConfig = {
+    models: ['XGBoost', 'RNN-LSTM'],
+    weightingStrategy: 'adaptive',
+    performanceWindow: 20,
+    rebalanceFrequency: 10,
+    diversityWeight: 0.2,
+    stabilityWeight: 0.1
+  };
 
   /**
-   * Initialise les modèles de machine learning
+   * Initialise les modèles de machine learning avec optimisation optionnelle
    */
-  static async initializeModels(): Promise<void> {
-    if (this.isInitialized) return;
+  static async initializeModels(optimize: boolean = false): Promise<void> {
+    if (this.isInitialized && (!optimize || this.isOptimized)) return;
 
     console.log('🤖 Initialisation des modèles de prédiction...');
 
-    this.xgboostModel = new XGBoostModel({
-      sequenceLength: 15,
-      hiddenUnits: 128,
-      learningRate: 0.001,
-      batchSize: 32,
-      epochs: 80,
-      regularization: { l1: 0.01, l2: 0.01, dropout: 0.3 }
-    });
+    if (optimize && !this.isOptimized) {
+      console.log('🔧 Mode optimisation activé - recherche des meilleurs hyperparamètres...');
+      await this.optimizeModels();
+    } else {
+      // Configuration par défaut optimisée
+      this.xgboostModel = new XGBoostModel({
+        sequenceLength: 15,
+        hiddenUnits: 128,
+        learningRate: 0.001,
+        batchSize: 32,
+        epochs: 80,
+        validationSplit: 0.2,
+        regularization: { l1: 0.01, l2: 0.01, dropout: 0.3 }
+      });
 
-    this.rnnLstmModel = new RNNLSTMModel({
-      sequenceLength: 20,
-      hiddenUnits: 256,
-      learningRate: 0.0005,
-      batchSize: 16,
-      epochs: 120,
-      regularization: { l1: 0.001, l2: 0.001, dropout: 0.4 }
-    });
+      this.rnnLstmModel = new RNNLSTMModel({
+        sequenceLength: 20,
+        hiddenUnits: 256,
+        learningRate: 0.0005,
+        batchSize: 16,
+        epochs: 120,
+        validationSplit: 0.2,
+        regularization: { l1: 0.001, l2: 0.001, dropout: 0.4 }
+      });
+    }
 
     this.isInitialized = true;
     console.log('✅ Modèles initialisés');
+  }
+
+  /**
+   * Optimise automatiquement les hyperparamètres des modèles
+   */
+  static async optimizeModels(): Promise<void> {
+    console.log('🎯 Optimisation automatique des modèles...');
+
+    // Récupérer les données historiques pour l'optimisation
+    const historicalData = await IndexedDBService.getAllResults();
+    if (historicalData.length < 100) {
+      console.warn('⚠️ Données insuffisantes pour l\'optimisation, utilisation des paramètres par défaut');
+      return;
+    }
+
+    // Espace de recherche pour XGBoost
+    const xgboostSearchSpace: HyperparameterConfig = {
+      sequenceLength: [10, 15, 20, 25],
+      hiddenUnits: [64, 128, 256, 512],
+      learningRate: [0.0005, 0.001, 0.002, 0.005],
+      batchSize: [16, 32, 64],
+      epochs: [50, 80, 100, 120],
+      regularization: {
+        l1: [0.001, 0.01, 0.1],
+        l2: [0.001, 0.01, 0.1],
+        dropout: [0.2, 0.3, 0.4, 0.5]
+      }
+    };
+
+    // Espace de recherche pour RNN-LSTM
+    const lstmSearchSpace: HyperparameterConfig = {
+      sequenceLength: [15, 20, 25, 30],
+      hiddenUnits: [128, 256, 512],
+      learningRate: [0.0001, 0.0005, 0.001, 0.002],
+      batchSize: [8, 16, 32],
+      epochs: [80, 120, 150, 200],
+      regularization: {
+        l1: [0.0001, 0.001, 0.01],
+        l2: [0.0001, 0.001, 0.01],
+        dropout: [0.3, 0.4, 0.5, 0.6]
+      }
+    };
+
+    try {
+      // Optimiser les deux modèles en parallèle
+      const [xgboostResult, lstmResult] = await Promise.all([
+        EnsembleOptimizer.optimizeHyperparameters('XGBoost', historicalData, xgboostSearchSpace, 15),
+        EnsembleOptimizer.optimizeHyperparameters('RNN-LSTM', historicalData, lstmSearchSpace, 15)
+      ]);
+
+      // Créer les modèles avec les configurations optimisées
+      this.xgboostModel = new XGBoostModel(xgboostResult.bestConfig);
+      this.rnnLstmModel = new RNNLSTMModel(lstmResult.bestConfig);
+
+      this.isOptimized = true;
+
+      console.log('🏆 Optimisation terminée:');
+      console.log(`  XGBoost - Score: ${xgboostResult.bestScore.toFixed(4)}`);
+      console.log(`  RNN-LSTM - Score: ${lstmResult.bestScore.toFixed(4)}`);
+
+      // Sauvegarder les résultats d'optimisation
+      await this.saveOptimizationResults(xgboostResult, lstmResult);
+
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'optimisation:', error);
+      console.log('🔄 Utilisation des paramètres par défaut...');
+
+      // Fallback vers les paramètres par défaut
+      this.xgboostModel = new XGBoostModel({
+        sequenceLength: 15,
+        hiddenUnits: 128,
+        learningRate: 0.001,
+        batchSize: 32,
+        epochs: 80,
+        validationSplit: 0.2,
+        regularization: { l1: 0.01, l2: 0.01, dropout: 0.3 }
+      });
+
+      this.rnnLstmModel = new RNNLSTMModel({
+        sequenceLength: 20,
+        hiddenUnits: 256,
+        learningRate: 0.0005,
+        batchSize: 16,
+        epochs: 120,
+        validationSplit: 0.2,
+        regularization: { l1: 0.001, l2: 0.001, dropout: 0.4 }
+      });
+    }
   }
 
   /**
@@ -474,7 +580,7 @@ export class PredictionService {
   }
 
   /**
-   * Génère une prédiction hybride combinant XGBoost et RNN-LSTM
+   * Génère une prédiction hybride avancée combinant XGBoost et RNN-LSTM
    */
   private static async generateHybridPrediction(results: DrawResult[]): Promise<{
     predictions: MLPrediction[];
@@ -507,10 +613,25 @@ export class PredictionService {
       this.rnnLstmModel.predict(results)
     ]);
 
-    // Calculer les poids dynamiques basés sur la performance récente
-    const ensembleWeights = this.calculateDynamicWeights(xgboostPreds, lstmPreds, results);
+    // Utiliser l'optimiseur d'ensemble pour calculer les poids adaptatifs
+    const models = [
+      { name: 'XGBoost', predictions: xgboostPreds },
+      { name: 'RNN-LSTM', predictions: lstmPreds }
+    ];
 
-    // Combiner les prédictions avec les poids dynamiques
+    const optimizedWeights = await EnsembleOptimizer.optimizeEnsembleWeights(
+      models,
+      results,
+      this.ensembleConfig
+    );
+
+    // Convertir les poids pour la compatibilité
+    const ensembleWeights = {
+      xgboost: optimizedWeights.get('XGBoost') || 0.5,
+      lstm: optimizedWeights.get('RNN-LSTM') || 0.5
+    };
+
+    // Combiner les prédictions avec les poids optimisés
     const combinedPredictions = this.combineMLPredictions(
       xgboostPreds,
       lstmPreds,
@@ -520,13 +641,21 @@ export class PredictionService {
     // Effectuer l'analyse bayésienne
     const bayesianAnalysis = BayesianAnalyzer.performBayesianAnalysis(results, combinedPredictions);
 
-    // Calculer la confiance globale
-    const confidence = this.calculateEnsembleConfidence(
+    // Calculer la confiance globale avec métriques avancées
+    const confidence = this.calculateAdvancedEnsembleConfidence(
       xgboostPreds,
       lstmPreds,
       combinedPredictions,
-      results.length
+      results
     );
+
+    // Mettre à jour l'historique de performance
+    const modelPerformances = new Map<string, number>();
+    modelPerformances.set('XGBoost', this.evaluateModelPerformance(xgboostPreds, results.slice(0, 5)));
+    modelPerformances.set('RNN-LSTM', this.evaluateModelPerformance(lstmPreds, results.slice(0, 5)));
+
+    const ensemblePerformance = this.evaluateModelPerformance(combinedPredictions, results.slice(0, 5));
+    EnsembleOptimizer.updatePerformanceHistory(modelPerformances, ensemblePerformance);
 
     return {
       predictions: combinedPredictions,
@@ -582,6 +711,156 @@ export class PredictionService {
     return Object.values(combined)
       .sort((a, b) => b.probability - a.probability)
       .slice(0, 15);
+  }
+
+  /**
+   * Calcule une confiance d'ensemble avancée avec métriques multiples
+   */
+  private static calculateAdvancedEnsembleConfidence(
+    xgboostPreds: MLPrediction[],
+    lstmPreds: MLPrediction[],
+    combinedPreds: MLPrediction[],
+    results: DrawResult[]
+  ): number {
+    // Confiance de base
+    const baseConfidence = this.calculateEnsembleConfidence(
+      xgboostPreds,
+      lstmPreds,
+      combinedPreds,
+      results.length
+    );
+
+    // Facteurs d'ajustement
+    const diversityFactor = this.calculatePredictionDiversity(combinedPreds);
+    const stabilityFactor = this.calculatePredictionStability(combinedPreds, results);
+    const consensusFactor = this.calculateModelConsensus(xgboostPreds, lstmPreds);
+
+    // Combinaison pondérée
+    const adjustedConfidence =
+      baseConfidence * 0.5 +
+      diversityFactor * 0.2 +
+      stabilityFactor * 0.2 +
+      consensusFactor * 0.1;
+
+    return Math.max(0, Math.min(1, adjustedConfidence));
+  }
+
+  /**
+   * Calcule la diversité des prédictions
+   */
+  private static calculatePredictionDiversity(predictions: MLPrediction[]): number {
+    if (predictions.length < 2) return 0;
+
+    const topPreds = predictions.slice(0, 5);
+    const numbers = topPreds.map(p => p.number);
+
+    // Vérifier la distribution dans les différentes plages
+    const ranges = [
+      [1, 18], [19, 36], [37, 54], [55, 72], [73, 90]
+    ];
+
+    let coveredRanges = 0;
+    ranges.forEach(([min, max]) => {
+      if (numbers.some(num => num >= min && num <= max)) {
+        coveredRanges++;
+      }
+    });
+
+    return coveredRanges / ranges.length;
+  }
+
+  /**
+   * Calcule la stabilité des prédictions par rapport à l'historique
+   */
+  private static calculatePredictionStability(
+    predictions: MLPrediction[],
+    results: DrawResult[]
+  ): number {
+    const recentResults = results.slice(0, 10);
+    const topPreds = predictions.slice(0, 5).map(p => p.number);
+
+    // Analyser la cohérence avec les tendances récentes
+    const recentNumbers = new Set<number>();
+    recentResults.forEach(result => {
+      result.gagnants.forEach(num => recentNumbers.add(num));
+    });
+
+    const trendAlignment = topPreds.filter(num => recentNumbers.has(num)).length / topPreds.length;
+
+    // Éviter la sur-adaptation (équilibrer avec la nouveauté)
+    const noveltyScore = topPreds.filter(num => !recentNumbers.has(num)).length / topPreds.length;
+
+    return (trendAlignment * 0.7 + noveltyScore * 0.3);
+  }
+
+  /**
+   * Calcule le consensus entre les modèles
+   */
+  private static calculateModelConsensus(
+    xgboostPreds: MLPrediction[],
+    lstmPreds: MLPrediction[]
+  ): number {
+    const xgbTop = xgboostPreds.slice(0, 5).map(p => p.number);
+    const lstmTop = lstmPreds.slice(0, 5).map(p => p.number);
+
+    const intersection = xgbTop.filter(num => lstmTop.includes(num)).length;
+    const union = new Set([...xgbTop, ...lstmTop]).size;
+
+    return union > 0 ? intersection / Math.min(xgbTop.length, lstmTop.length) : 0;
+  }
+
+  /**
+   * Évalue la performance d'un modèle sur des résultats récents
+   */
+  private static evaluateModelPerformance(
+    predictions: MLPrediction[],
+    actualResults: DrawResult[]
+  ): number {
+    if (predictions.length === 0 || actualResults.length === 0) return 0;
+
+    const topPreds = predictions.slice(0, 5);
+    let totalScore = 0;
+    let totalPredictions = 0;
+
+    actualResults.forEach(result => {
+      topPreds.forEach(pred => {
+        totalPredictions++;
+        if (result.gagnants.includes(pred.number)) {
+          totalScore += pred.probability * pred.confidence;
+        }
+      });
+    });
+
+    return totalPredictions > 0 ? totalScore / totalPredictions : 0;
+  }
+
+  /**
+   * Sauvegarde les résultats d'optimisation
+   */
+  private static async saveOptimizationResults(
+    xgboostResult: any,
+    lstmResult: any
+  ): Promise<void> {
+    try {
+      const optimizationData = {
+        timestamp: new Date().toISOString(),
+        xgboost: {
+          bestScore: xgboostResult.bestScore,
+          bestConfig: xgboostResult.bestConfig,
+          convergenceHistory: xgboostResult.convergenceHistory
+        },
+        lstm: {
+          bestScore: lstmResult.bestScore,
+          bestConfig: lstmResult.bestConfig,
+          convergenceHistory: lstmResult.convergenceHistory
+        }
+      };
+
+      await IndexedDBService.saveOptimizationResults(optimizationData);
+      console.log('💾 Résultats d\'optimisation sauvegardés');
+    } catch (error) {
+      console.warn('⚠️ Erreur lors de la sauvegarde des résultats d\'optimisation:', error);
+    }
   }
 
   /**

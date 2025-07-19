@@ -102,19 +102,32 @@ export class XGBoostModel {
       
       const model = this.createBaseModel(inputShape);
       
-      // Entraîner sur les résidus (gradient boosting)
+      // Entraîner sur les résidus (gradient boosting) avec early stopping
+      const earlyStopping = tf.callbacks.earlyStopping({
+        monitor: 'val_loss',
+        patience: 15,
+        restoreBestWeights: true
+      });
+
+      const reduceLROnPlateau = tf.callbacks.reduceLROnPlateau({
+        monitor: 'val_loss',
+        factor: 0.5,
+        patience: 8,
+        minLr: 0.00001
+      });
+
       const history = await model.fit(features, residuals, {
         epochs: this.config.epochs,
         batchSize: this.config.batchSize,
         validationSplit: this.config.validationSplit,
         verbose: 0,
-        callbacks: {
+        callbacks: [earlyStopping, reduceLROnPlateau, {
           onEpochEnd: (epoch, logs) => {
             if (epoch % 20 === 0) {
-              console.log(`  Époque ${epoch}: loss=${logs?.loss?.toFixed(4)}, acc=${logs?.acc?.toFixed(4)}`);
+              console.log(`  Époque ${epoch}: loss=${logs?.loss?.toFixed(4)}, val_loss=${logs?.val_loss?.toFixed(4)}, acc=${logs?.acc?.toFixed(4)}`);
             }
           }
-        }
+        }]
       });
 
       this.models.push(model);
@@ -269,19 +282,25 @@ export class XGBoostModel {
   }
 
   /**
-   * Calcule les métriques de performance du modèle
+   * Calcule les métriques de performance avancées du modèle
    */
   private calculateMetrics(trueLabels: tf.Tensor, predictions: tf.Tensor): ModelMetrics {
     // Convertir en prédictions binaires (seuil à 0.5)
     const binaryPreds = predictions.greater(0.5);
-    
+
     // Calculer les métriques de base
     const accuracy = tf.metrics.binaryAccuracy(trueLabels, predictions).dataSync()[0];
     const precision = tf.metrics.precision(trueLabels, binaryPreds).dataSync()[0];
     const recall = tf.metrics.recall(trueLabels, binaryPreds).dataSync()[0];
-    
+
     const f1Score = 2 * (precision * recall) / (precision + recall) || 0;
     const logLoss = tf.losses.sigmoidCrossEntropy(trueLabels, predictions).dataSync()[0];
+
+    // Calculer l'erreur de calibration
+    const calibrationError = this.calculateCalibrationError(trueLabels, predictions);
+
+    // Calculer le ratio de Sharpe (adapté pour la loterie)
+    const sharpeRatio = this.calculateSharpeRatio(predictions);
 
     // Nettoyer
     binaryPreds.dispose();
@@ -292,8 +311,16 @@ export class XGBoostModel {
       recall,
       f1Score,
       logLoss,
-      calibrationError: this.calculateCalibrationError(trueLabels, predictions),
-      sharpeRatio: this.calculateSharpeRatio(trueLabels, predictions)
+      calibrationError,
+      sharpeRatio,
+      // Nouvelles métriques spécialisées (valeurs par défaut)
+      hitRate: 0,
+      coverageRate: 0,
+      expectedValue: 0,
+      consistencyScore: 0,
+      diversityScore: 0,
+      temporalStability: 0,
+      uncertaintyCalibration: calibrationError
     };
   }
 
@@ -337,9 +364,9 @@ export class XGBoostModel {
   }
 
   /**
-   * Calcule le ratio de Sharpe pour évaluer la qualité des prédictions
+   * Calcule le ratio de Sharpe adapté pour évaluer la qualité des prédictions
    */
-  private calculateSharpeRatio(trueLabels: tf.Tensor, predictions: tf.Tensor): number {
+  private calculateSharpeRatio(predictions: tf.Tensor): number {
     const predData = predictions.dataSync();
     const trueData = trueLabels.dataSync();
     

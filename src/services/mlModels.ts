@@ -37,7 +37,7 @@ export interface MLPrediction {
   features: string[];
 }
 
-// Interface pour les métriques de performance
+// Interface pour les métriques de performance avancées
 export interface ModelMetrics {
   accuracy: number;
   precision: number;
@@ -46,6 +46,14 @@ export interface ModelMetrics {
   logLoss: number;
   calibrationError: number;
   sharpeRatio: number;
+  // Nouvelles métriques spécialisées pour la loterie
+  hitRate: number; // Pourcentage de numéros prédits qui sortent effectivement
+  coverageRate: number; // Pourcentage de numéros sortants qui étaient prédits
+  expectedValue: number; // Valeur espérée des prédictions
+  consistencyScore: number; // Cohérence des prédictions dans le temps
+  diversityScore: number; // Diversité des prédictions (évite la sur-concentration)
+  temporalStability: number; // Stabilité des prédictions dans le temps
+  uncertaintyCalibration: number; // Qualité de la calibration de l'incertitude
 }
 
 /**
@@ -53,11 +61,11 @@ export interface ModelMetrics {
  */
 export class FeatureEngineering {
   /**
-   * Extrait toutes les features d'un ensemble de résultats
+   * Extrait toutes les features enrichies d'un ensemble de résultats
    */
   static extractFeatures(results: DrawResult[], windowSize: number = 50): FeatureSet {
     const recentResults = results.slice(0, windowSize);
-    
+
     return {
       frequencies: this.calculateFrequencies(recentResults),
       gaps: this.calculateGaps(recentResults),
@@ -68,6 +76,166 @@ export class FeatureEngineering {
       volatility: this.calculateVolatility(recentResults),
       seasonality: this.calculateSeasonality(recentResults)
     };
+  }
+
+  /**
+   * Calcule des features de corrélation entre numéros
+   */
+  static calculateCorrelationFeatures(results: DrawResult[]): number[] {
+    const correlations = new Array(90).fill(0);
+    const coOccurrenceMatrix = new Array(90).fill(null).map(() => new Array(90).fill(0));
+
+    // Construire la matrice de co-occurrence
+    results.forEach(result => {
+      for (let i = 0; i < result.gagnants.length; i++) {
+        for (let j = i + 1; j < result.gagnants.length; j++) {
+          const num1 = result.gagnants[i] - 1;
+          const num2 = result.gagnants[j] - 1;
+          coOccurrenceMatrix[num1][num2]++;
+          coOccurrenceMatrix[num2][num1]++;
+        }
+      }
+    });
+
+    // Calculer les corrélations moyennes pour chaque numéro
+    for (let i = 0; i < 90; i++) {
+      let totalCorrelation = 0;
+      let count = 0;
+
+      for (let j = 0; j < 90; j++) {
+        if (i !== j) {
+          totalCorrelation += coOccurrenceMatrix[i][j];
+          count++;
+        }
+      }
+
+      correlations[i] = count > 0 ? totalCorrelation / count : 0;
+    }
+
+    // Normaliser
+    const maxCorr = Math.max(...correlations);
+    return correlations.map(corr => maxCorr > 0 ? corr / maxCorr : 0);
+  }
+
+  /**
+   * Calcule des features de distribution (parité, somme, écart-type)
+   */
+  static calculateDistributionFeatures(results: DrawResult[]): number[] {
+    const features = new Array(90).fill(0);
+
+    results.forEach((result, index) => {
+      const timeWeight = Math.exp(-index * 0.02);
+
+      // Analyser la distribution des numéros dans ce tirage
+      const numbers = result.gagnants.sort((a, b) => a - b);
+      const sum = numbers.reduce((a, b) => a + b, 0);
+      const mean = sum / numbers.length;
+      const variance = numbers.reduce((acc, num) => acc + Math.pow(num - mean, 2), 0) / numbers.length;
+      const stdDev = Math.sqrt(variance);
+
+      // Parité (pairs vs impairs)
+      const evenCount = numbers.filter(n => n % 2 === 0).length;
+      const parityRatio = evenCount / numbers.length;
+
+      // Distribution par tranches
+      const ranges = [
+        [1, 18], [19, 36], [37, 54], [55, 72], [73, 90]
+      ];
+      const rangeDistribution = ranges.map(([min, max]) =>
+        numbers.filter(n => n >= min && n <= max).length / numbers.length
+      );
+
+      // Appliquer ces features à chaque numéro du tirage
+      numbers.forEach(num => {
+        const idx = num - 1;
+        features[idx] += (
+          (sum / 450) * 0.3 +           // Somme normalisée
+          (stdDev / 30) * 0.2 +         // Écart-type normalisé
+          parityRatio * 0.2 +           // Ratio de parité
+          rangeDistribution[Math.floor((num - 1) / 18)] * 0.3  // Distribution par tranche
+        ) * timeWeight;
+      });
+    });
+
+    // Normaliser
+    const maxFeature = Math.max(...features.map(Math.abs));
+    return features.map(feat => maxFeature > 0 ? feat / maxFeature : 0);
+  }
+
+  /**
+   * Calcule des features de séquences et patterns
+   */
+  static calculateSequenceFeatures(results: DrawResult[]): number[] {
+    const features = new Array(90).fill(0);
+
+    for (let i = 1; i < results.length; i++) {
+      const current = results[i].gagnants;
+      const previous = results[i - 1].gagnants;
+      const timeWeight = Math.exp(-i * 0.03);
+
+      // Analyser les patterns de répétition
+      const repeated = current.filter(num => previous.includes(num));
+      const consecutive = this.findConsecutiveNumbers(current);
+      const gaps = this.calculateNumberGaps(current);
+
+      current.forEach(num => {
+        const idx = num - 1;
+
+        // Score basé sur les patterns
+        let patternScore = 0;
+
+        // Bonus pour les répétitions du tirage précédent
+        if (repeated.includes(num)) {
+          patternScore += 0.3;
+        }
+
+        // Bonus pour les numéros consécutifs
+        if (consecutive.includes(num)) {
+          patternScore += 0.2;
+        }
+
+        // Score basé sur les écarts
+        const avgGap = gaps.reduce((a, b) => a + b, 0) / gaps.length;
+        const gapVariance = gaps.reduce((acc, gap) => acc + Math.pow(gap - avgGap, 2), 0) / gaps.length;
+        patternScore += (1 - Math.min(1, gapVariance / 100)) * 0.5;
+
+        features[idx] += patternScore * timeWeight;
+      });
+    }
+
+    // Normaliser
+    const maxFeature = Math.max(...features.map(Math.abs));
+    return features.map(feat => maxFeature > 0 ? feat / maxFeature : 0);
+  }
+
+  /**
+   * Trouve les numéros consécutifs dans un tirage
+   */
+  private static findConsecutiveNumbers(numbers: number[]): number[] {
+    const sorted = [...numbers].sort((a, b) => a - b);
+    const consecutive: number[] = [];
+
+    for (let i = 0; i < sorted.length - 1; i++) {
+      if (sorted[i + 1] - sorted[i] === 1) {
+        consecutive.push(sorted[i], sorted[i + 1]);
+      }
+    }
+
+    return [...new Set(consecutive)];
+  }
+
+  /**
+   * Calcule les écarts entre numéros dans un tirage
+   */
+  private static calculateNumberGaps(numbers: number[]): number[] {
+    const sorted = [...numbers].sort((a, b) => a - b);
+    const gaps: number[] = [];
+
+    for (let i = 0; i < sorted.length - 1; i++) {
+      gaps.push(sorted[i + 1] - sorted[i]);
+    }
+
+    return gaps;
   }
 
   /**
@@ -160,28 +328,46 @@ export class FeatureEngineering {
   }
 
   /**
-   * Calcule les features cycliques (jour de la semaine, position dans le mois)
+   * Calcule les features cycliques avancées (jour, semaine, mois, saison)
    */
   private static calculateCyclicalFeatures(results: DrawResult[]): number[] {
     const cyclical = new Array(90).fill(0);
-    
+
     results.forEach((result, index) => {
       const date = new Date(result.date);
       const dayOfWeek = date.getDay();
       const dayOfMonth = date.getDate();
-      
-      // Encoding cyclique pour le jour de la semaine
+      const month = date.getMonth();
+      const weekOfYear = this.getWeekOfYear(date);
+
+      // Encodings cycliques multiples
       const weekCycle = Math.sin(2 * Math.PI * dayOfWeek / 7);
       const monthCycle = Math.sin(2 * Math.PI * dayOfMonth / 31);
-      
+      const seasonCycle = Math.sin(2 * Math.PI * month / 12);
+      const yearCycle = Math.sin(2 * Math.PI * weekOfYear / 52);
+
+      // Poids temporel (plus récent = plus important)
+      const timeWeight = Math.exp(-index * 0.05);
+
       result.gagnants.forEach(num => {
-        cyclical[num - 1] += (weekCycle + monthCycle) / 2;
+        const combinedCycle = (weekCycle + monthCycle + seasonCycle + yearCycle) / 4;
+        cyclical[num - 1] += combinedCycle * timeWeight;
       });
     });
-    
+
     // Normaliser
     const maxCyclical = Math.max(...cyclical.map(Math.abs));
     return cyclical.map(cyc => maxCyclical > 0 ? cyc / maxCyclical : 0);
+  }
+
+  /**
+   * Calcule la semaine de l'année
+   */
+  private static getWeekOfYear(date: Date): number {
+    const start = new Date(date.getFullYear(), 0, 1);
+    const diff = date.getTime() - start.getTime();
+    const oneWeek = 1000 * 60 * 60 * 24 * 7;
+    return Math.floor(diff / oneWeek);
   }
 
   /**
@@ -272,14 +458,17 @@ export class FeatureEngineering {
       const sequence = results.slice(i - sequenceLength, i);
       const target = results[i];
       
-      // Extraire les features pour la séquence
+      // Extraire toutes les features enrichies pour la séquence
       const featureSet = this.extractFeatures(sequence, sequenceLength);
       const flatFeatures = [
         ...featureSet.frequencies,
         ...featureSet.gaps,
         ...featureSet.momentum,
         ...featureSet.volatility,
-        ...featureSet.temporalTrends
+        ...featureSet.temporalTrends,
+        ...featureSet.cyclicalFeatures,
+        ...featureSet.coOccurrences,
+        ...featureSet.seasonality
       ];
       
       // Créer le label (one-hot encoding des numéros gagnants)
@@ -297,7 +486,10 @@ export class FeatureEngineering {
       ...Array.from({length: 90}, (_, i) => `gap_${i + 1}`),
       ...Array.from({length: 90}, (_, i) => `momentum_${i + 1}`),
       ...Array.from({length: 90}, (_, i) => `volatility_${i + 1}`),
-      ...Array.from({length: 90}, (_, i) => `trend_${i + 1}`)
+      ...Array.from({length: 90}, (_, i) => `trend_${i + 1}`),
+      ...Array.from({length: 90}, (_, i) => `cyclical_${i + 1}`),
+      ...Array.from({length: 90}, (_, i) => `cooccur_${i + 1}`),
+      ...Array.from({length: 90}, (_, i) => `seasonal_${i + 1}`)
     ];
     
     return {
@@ -305,5 +497,196 @@ export class FeatureEngineering {
       labels: tf.tensor2d(labels),
       featureNames
     };
+  }
+
+  /**
+   * Effectue une validation croisée temporelle
+   */
+  static performTimeSeriesCrossValidation(
+    results: DrawResult[],
+    nFolds: number = 5,
+    testSize: number = 0.2
+  ): Array<{ train: DrawResult[]; test: DrawResult[] }> {
+    const folds: Array<{ train: DrawResult[]; test: DrawResult[] }> = [];
+    const totalSize = results.length;
+    const foldSize = Math.floor(totalSize / nFolds);
+
+    for (let i = 0; i < nFolds; i++) {
+      const testStart = i * foldSize;
+      const testEnd = Math.min(testStart + Math.floor(foldSize * testSize), totalSize);
+      const trainEnd = testStart;
+
+      if (trainEnd < 30) continue; // Minimum de données d'entraînement
+
+      const train = results.slice(0, trainEnd);
+      const test = results.slice(testStart, testEnd);
+
+      if (test.length > 0) {
+        folds.push({ train, test });
+      }
+    }
+
+    return folds;
+  }
+
+  /**
+   * Calcule des métriques avancées spécialisées pour la loterie
+   */
+  static calculateAdvancedMetrics(
+    predictions: MLPrediction[],
+    actualResults: DrawResult[],
+    timeWindow: number = 10
+  ): Partial<ModelMetrics> {
+    const recentResults = actualResults.slice(0, timeWindow);
+    const topPredictions = predictions.slice(0, 5); // Top 5 prédictions
+
+    // Hit Rate: pourcentage de prédictions qui sortent effectivement
+    let hits = 0;
+    let totalPredictions = 0;
+
+    recentResults.forEach(result => {
+      topPredictions.forEach(pred => {
+        totalPredictions++;
+        if (result.gagnants.includes(pred.number)) {
+          hits++;
+        }
+      });
+    });
+
+    const hitRate = totalPredictions > 0 ? hits / totalPredictions : 0;
+
+    // Coverage Rate: pourcentage de numéros sortants qui étaient prédits
+    let covered = 0;
+    let totalWinning = 0;
+
+    recentResults.forEach(result => {
+      result.gagnants.forEach(winningNum => {
+        totalWinning++;
+        if (topPredictions.some(pred => pred.number === winningNum)) {
+          covered++;
+        }
+      });
+    });
+
+    const coverageRate = totalWinning > 0 ? covered / totalWinning : 0;
+
+    // Diversity Score: évite la sur-concentration sur certains numéros
+    const numberCounts = new Map<number, number>();
+    topPredictions.forEach(pred => {
+      numberCounts.set(pred.number, (numberCounts.get(pred.number) || 0) + 1);
+    });
+
+    const uniqueNumbers = numberCounts.size;
+    const maxCount = Math.max(...Array.from(numberCounts.values()));
+    const diversityScore = uniqueNumbers / Math.max(1, maxCount);
+
+    // Expected Value: valeur espérée basée sur les probabilités
+    const expectedValue = topPredictions.reduce((sum, pred) =>
+      sum + pred.probability * pred.confidence, 0
+    ) / topPredictions.length;
+
+    // Consistency Score: cohérence des prédictions dans le temps
+    const consistencyScore = this.calculateConsistencyScore(predictions, recentResults);
+
+    return {
+      hitRate,
+      coverageRate,
+      diversityScore,
+      expectedValue,
+      consistencyScore,
+      temporalStability: this.calculateTemporalStability(predictions),
+      uncertaintyCalibration: this.calculateUncertaintyCalibration(predictions, recentResults)
+    };
+  }
+
+  /**
+   * Calcule le score de cohérence des prédictions
+   */
+  private static calculateConsistencyScore(
+    predictions: MLPrediction[],
+    results: DrawResult[]
+  ): number {
+    if (predictions.length < 2) return 0;
+
+    // Mesurer la variance des probabilités pour les mêmes numéros
+    const numberProbabilities = new Map<number, number[]>();
+
+    predictions.forEach(pred => {
+      if (!numberProbabilities.has(pred.number)) {
+        numberProbabilities.set(pred.number, []);
+      }
+      numberProbabilities.get(pred.number)!.push(pred.probability);
+    });
+
+    let totalVariance = 0;
+    let count = 0;
+
+    numberProbabilities.forEach(probs => {
+      if (probs.length > 1) {
+        const mean = probs.reduce((a, b) => a + b, 0) / probs.length;
+        const variance = probs.reduce((sum, prob) => sum + Math.pow(prob - mean, 2), 0) / probs.length;
+        totalVariance += variance;
+        count++;
+      }
+    });
+
+    return count > 0 ? 1 - (totalVariance / count) : 1;
+  }
+
+  /**
+   * Calcule la stabilité temporelle des prédictions
+   */
+  private static calculateTemporalStability(predictions: MLPrediction[]): number {
+    if (predictions.length < 5) return 0;
+
+    // Analyser la stabilité des top prédictions dans le temps
+    const topNumbers = predictions.slice(0, 5).map(p => p.number);
+    const stabilityWindow = Math.min(10, predictions.length);
+
+    let stabilityScore = 0;
+    for (let i = 0; i < stabilityWindow - 1; i++) {
+      const current = predictions.slice(i * 5, (i + 1) * 5).map(p => p.number);
+      const next = predictions.slice((i + 1) * 5, (i + 2) * 5).map(p => p.number);
+
+      const overlap = current.filter(num => next.includes(num)).length;
+      stabilityScore += overlap / 5;
+    }
+
+    return stabilityScore / (stabilityWindow - 1);
+  }
+
+  /**
+   * Calcule la calibration de l'incertitude
+   */
+  private static calculateUncertaintyCalibration(
+    predictions: MLPrediction[],
+    results: DrawResult[]
+  ): number {
+    if (predictions.length === 0 || results.length === 0) return 0;
+
+    // Grouper les prédictions par niveau d'incertitude
+    const uncertaintyBins = [0.1, 0.3, 0.5, 0.7, 0.9];
+    let calibrationError = 0;
+
+    uncertaintyBins.forEach(threshold => {
+      const binnedPredictions = predictions.filter(p => p.uncertainty <= threshold);
+      if (binnedPredictions.length === 0) return;
+
+      // Calculer la précision réelle pour ce bin
+      let correctPredictions = 0;
+      binnedPredictions.forEach(pred => {
+        const isCorrect = results.some(result =>
+          result.gagnants.includes(pred.number)
+        );
+        if (isCorrect) correctPredictions++;
+      });
+
+      const actualAccuracy = correctPredictions / binnedPredictions.length;
+      const expectedAccuracy = 1 - threshold; // Plus l'incertitude est faible, plus on s'attend à une bonne précision
+
+      calibrationError += Math.abs(actualAccuracy - expectedAccuracy);
+    });
+
+    return 1 - (calibrationError / uncertaintyBins.length);
   }
 }

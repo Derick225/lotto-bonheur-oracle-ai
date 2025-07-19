@@ -17,6 +17,17 @@ import { useToast } from "@/hooks/use-toast";
 import { Header } from "@/components/Header";
 import { LotteryNumber } from "@/components/LotteryNumber";
 import { SyncStatusDetailed } from "@/components/SyncStatus";
+import { ModelOptimizationPanel } from "@/components/ModelOptimizationPanel";
+import { MonitoringDashboard } from "@/components/MonitoringDashboard";
+import { AdminDashboard } from "@/components/admin/AdminDashboard";
+import { UserManagementPanel } from "@/components/admin/UserManagementPanel";
+import { AuditLogsPanel } from "@/components/admin/AuditLogsPanel";
+import { SystemConfigPanel } from "@/components/admin/SystemConfigPanel";
+import { MaintenancePanel } from "@/components/admin/MaintenancePanel";
+import { NotificationPanel } from "@/components/admin/NotificationPanel";
+import { SecurityPanel } from "@/components/admin/SecurityPanel";
+import { InitializationStatus } from "@/components/admin/InitializationStatus";
+import { DrawResultsManager } from "@/components/admin/DrawResultsManager";
 import { IndexedDBService } from "@/services/indexedDBService";
 import { SyncService } from "@/services/syncService";
 import { DrawResult } from "@/services/lotteryAPI";
@@ -36,6 +47,7 @@ export function AdminPage() {
   const [editingResult, setEditingResult] = useState<DrawResult | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdminInitialized, setIsAdminInitialized] = useState<boolean | null>(null);
   const { toast } = useToast();
 
   const form = useForm<DrawResultForm>({
@@ -79,7 +91,57 @@ export function AdminPage() {
 
   useEffect(() => {
     loadDrawResults();
+
+    // Vérifier et initialiser les services d'administration
+    checkAndInitializeAdmin();
   }, []);
+
+  const checkAndInitializeAdmin = async () => {
+    try {
+      const { isAdminSystemInitialized } = await import('@/scripts/initializeAdmin');
+      const initialized = isAdminSystemInitialized();
+      setIsAdminInitialized(initialized);
+
+      if (initialized) {
+        await initializeAdminServices();
+      }
+    } catch (error) {
+      console.error('Erreur lors de la vérification de l\'initialisation:', error);
+      setIsAdminInitialized(false);
+    }
+  };
+
+  const initializeAdminServices = async () => {
+    try {
+      // Vérifier si le système est déjà initialisé
+      const { isAdminSystemInitialized, initializeAdminSystem } = await import('@/scripts/initializeAdmin');
+
+      if (!isAdminSystemInitialized()) {
+        console.log('🚀 Première initialisation du système d\'administration...');
+        await initializeAdminSystem();
+        console.log('✅ Système d\'administration initialisé avec succès');
+      } else {
+        // Initialiser seulement les services
+        const { UserManagementService } = await import('@/services/userManagement');
+        const { AuditService } = await import('@/services/auditService');
+        const { SystemConfigService } = await import('@/services/systemConfig');
+        const { BackupService } = await import('@/services/backupService');
+        const { NotificationService } = await import('@/services/notificationService');
+        const { SecurityService } = await import('@/services/securityService');
+
+        await UserManagementService.initialize();
+        AuditService.initialize();
+        SecurityService.initialize();
+        await SystemConfigService.initialize();
+        await BackupService.initialize();
+        await NotificationService.initialize();
+
+        console.log('✅ Services d\'administration rechargés');
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'initialisation des services admin:', error);
+    }
+  };
 
   const handleEdit = (result: DrawResult) => {
     setEditingResult(result);
@@ -187,27 +249,119 @@ export function AdminPage() {
     </div>
   );
 
+  // Afficher l'écran d'initialisation si nécessaire
+  if (isAdminInitialized === false) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5">
+        <Header />
+        <div className="container mx-auto px-4 py-8">
+          <InitializationStatus onComplete={() => {
+            setIsAdminInitialized(true);
+            initializeAdminServices();
+          }} />
+        </div>
+      </div>
+    );
+  }
+
+  // Afficher un loader pendant la vérification
+  if (isAdminInitialized === null) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5">
+        <Header />
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4" />
+              <p>Vérification du système d'administration...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5">
       <Header />
-      
+
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto space-y-6">
           <Tabs defaultValue="data" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="data" className="flex items-center gap-2">
+            <TabsList className="grid w-full grid-cols-4 lg:grid-cols-10">
+              <TabsTrigger value="dashboard" className="flex items-center gap-2">
                 <Database className="h-4 w-4" />
-                Gestion des Données
+                Dashboard
               </TabsTrigger>
-              <TabsTrigger value="sync" className="flex items-center gap-2">
-                <RefreshCw className="h-4 w-4" />
-                Synchronisation
+              <TabsTrigger value="draws" className="flex items-center gap-2">
+                <Database className="h-4 w-4" />
+                Tirages
               </TabsTrigger>
-              <TabsTrigger value="stats" className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Statistiques
+              <TabsTrigger value="users" className="flex items-center gap-2">
+                <Database className="h-4 w-4" />
+                Utilisateurs
+              </TabsTrigger>
+              <TabsTrigger value="security" className="flex items-center gap-2">
+                <Database className="h-4 w-4" />
+                Sécurité
+              </TabsTrigger>
+              <TabsTrigger value="config" className="flex items-center gap-2">
+                <Database className="h-4 w-4" />
+                Configuration
+              </TabsTrigger>
+              <TabsTrigger value="audit" className="flex items-center gap-2">
+                <Database className="h-4 w-4" />
+                Audit & Logs
+              </TabsTrigger>
+              <TabsTrigger value="maintenance" className="flex items-center gap-2">
+                <Database className="h-4 w-4" />
+                Maintenance
+              </TabsTrigger>
+              <TabsTrigger value="notifications" className="flex items-center gap-2">
+                <Database className="h-4 w-4" />
+                Notifications
+              </TabsTrigger>
+              <TabsTrigger value="monitoring" className="flex items-center gap-2">
+                <Database className="h-4 w-4" />
+                Monitoring
+              </TabsTrigger>
+              <TabsTrigger value="optimization" className="flex items-center gap-2">
+                <Database className="h-4 w-4" />
+                Optimisation IA
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="dashboard">
+              <AdminDashboard />
+            </TabsContent>
+
+            <TabsContent value="draws">
+              <DrawResultsManager />
+            </TabsContent>
+
+            <TabsContent value="users">
+              <UserManagementPanel />
+            </TabsContent>
+
+            <TabsContent value="security">
+              <SecurityPanel />
+            </TabsContent>
+
+            <TabsContent value="config">
+              <SystemConfigPanel />
+            </TabsContent>
+
+            <TabsContent value="audit">
+              <AuditLogsPanel />
+            </TabsContent>
+
+            <TabsContent value="maintenance">
+              <MaintenancePanel />
+            </TabsContent>
+
+            <TabsContent value="notifications">
+              <NotificationPanel />
+            </TabsContent>
 
             <TabsContent value="data">
               <Card>
@@ -487,6 +641,14 @@ export function AdminPage() {
 
             <TabsContent value="sync">
               <SyncStatusDetailed />
+            </TabsContent>
+
+            <TabsContent value="optimization">
+              <ModelOptimizationPanel />
+            </TabsContent>
+
+            <TabsContent value="monitoring">
+              <MonitoringDashboard />
             </TabsContent>
 
             <TabsContent value="stats">

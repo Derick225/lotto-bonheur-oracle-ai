@@ -182,8 +182,21 @@ export class RNNLSTMModel {
 
     console.log(`📊 Architecture: ${inputShape[0]} timesteps × ${inputShape[1]} features`);
 
-    // Callbacks pour l'entraînement
-    const callbacks = {
+    // Callbacks avancés pour l'entraînement
+    const earlyStopping = tf.callbacks.earlyStopping({
+      monitor: 'val_loss',
+      patience: 20,
+      restoreBestWeights: true
+    });
+
+    const reduceLROnPlateau = tf.callbacks.reduceLROnPlateau({
+      monitor: 'val_loss',
+      factor: 0.7,
+      patience: 10,
+      minLr: 0.00001
+    });
+
+    const callbacks = [earlyStopping, reduceLROnPlateau, {
       onEpochEnd: (epoch: number, logs: any) => {
         if (epoch % 25 === 0) {
           console.log(`  Époque ${epoch}: loss=${logs?.loss?.toFixed(4)}, val_loss=${logs?.val_loss?.toFixed(4)}, acc=${logs?.acc?.toFixed(4)}`);
@@ -192,9 +205,9 @@ export class RNNLSTMModel {
       onTrainEnd: () => {
         console.log('✅ Entraînement RNN-LSTM terminé');
       }
-    };
+    }];
 
-    // Entraînement avec early stopping simulé
+    // Entraînement avec early stopping et réduction du learning rate
     this.trainingHistory = await this.model.fit(sequences, labels, {
       epochs: this.config.epochs,
       batchSize: this.config.batchSize,
@@ -376,17 +389,23 @@ export class RNNLSTMModel {
   }
 
   /**
-   * Calcule les métriques de performance
+   * Calcule les métriques de performance avancées
    */
   private calculateMetrics(trueLabels: tf.Tensor, predictions: tf.Tensor): ModelMetrics {
     const binaryPreds = predictions.greater(0.5);
-    
+
     const accuracy = tf.metrics.binaryAccuracy(trueLabels, predictions).dataSync()[0];
     const precision = tf.metrics.precision(trueLabels, binaryPreds).dataSync()[0];
     const recall = tf.metrics.recall(trueLabels, binaryPreds).dataSync()[0];
-    
+
     const f1Score = 2 * (precision * recall) / (precision + recall) || 0;
     const logLoss = tf.losses.sigmoidCrossEntropy(trueLabels, predictions).dataSync()[0];
+
+    // Calculer l'erreur de calibration pour LSTM
+    const calibrationError = this.calculateCalibrationError(trueLabels, predictions);
+
+    // Calculer le ratio de Sharpe adapté
+    const sharpeRatio = this.calculateSharpeRatio(predictions);
 
     binaryPreds.dispose();
 
@@ -396,9 +415,73 @@ export class RNNLSTMModel {
       recall,
       f1Score,
       logLoss,
-      calibrationError: 0, // Simplifié pour LSTM
-      sharpeRatio: 0 // Simplifié pour LSTM
+      calibrationError,
+      sharpeRatio,
+      // Nouvelles métriques spécialisées (valeurs par défaut)
+      hitRate: 0,
+      coverageRate: 0,
+      expectedValue: 0,
+      consistencyScore: 0,
+      diversityScore: 0,
+      temporalStability: 0,
+      uncertaintyCalibration: calibrationError
     };
+  }
+
+  /**
+   * Calcule l'erreur de calibration pour LSTM
+   */
+  private calculateCalibrationError(trueLabels: tf.Tensor, predictions: tf.Tensor): number {
+    const numBins = 10;
+    const predData = predictions.dataSync();
+    const trueData = trueLabels.dataSync();
+
+    let totalError = 0;
+    let totalSamples = 0;
+
+    for (let bin = 0; bin < numBins; bin++) {
+      const binMin = bin / numBins;
+      const binMax = (bin + 1) / numBins;
+
+      let binCount = 0;
+      let binAccuracy = 0;
+      let binConfidence = 0;
+
+      for (let i = 0; i < predData.length; i++) {
+        if (predData[i] >= binMin && predData[i] < binMax) {
+          binCount++;
+          binAccuracy += trueData[i];
+          binConfidence += predData[i];
+        }
+      }
+
+      if (binCount > 0) {
+        binAccuracy /= binCount;
+        binConfidence /= binCount;
+        totalError += binCount * Math.abs(binAccuracy - binConfidence);
+        totalSamples += binCount;
+      }
+    }
+
+    return totalSamples > 0 ? totalError / totalSamples : 0;
+  }
+
+  /**
+   * Calcule le ratio de Sharpe adapté pour LSTM
+   */
+  private calculateSharpeRatio(predictions: tf.Tensor): number {
+    const predData = predictions.dataSync();
+
+    if (predData.length < 2) return 0;
+
+    // Calculer la moyenne et l'écart-type des prédictions
+    const mean = predData.reduce((a, b) => a + b, 0) / predData.length;
+    const variance = predData.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / predData.length;
+    const stdDev = Math.sqrt(variance);
+
+    // Ratio de Sharpe adapté : (rendement - taux sans risque) / volatilité
+    // Pour la loterie, on utilise la moyenne comme "rendement" et l'écart-type comme "risque"
+    return stdDev > 0 ? mean / stdDev : 0;
   }
 
   /**
@@ -435,6 +518,158 @@ export class RNNLSTMModel {
     if (!this.isTrained || !this.model) {
       throw new Error('Le modèle doit être entraîné avant d\'être sauvegardé');
     }
+
+    await this.model.save(`${path}/rnn_lstm_model`);
+
+    // Sauvegarder aussi le scaler
+    if (this.scaler) {
+      const scalerData = {
+        mean: await this.scaler.mean.data(),
+        std: await this.scaler.std.data()
+      };
+      // Note: Dans un vrai environnement, on sauvegarderait ceci dans un fichier JSON
+      console.log('Scaler sauvegardé:', scalerData);
+    }
+  }
+
+  /**
+   * Charge un modèle sauvegardé
+   */
+  async loadModel(path: string): Promise<void> {
+    try {
+      this.model = await tf.loadLayersModel(`${path}/rnn_lstm_model/model.json`);
+      this.isTrained = true;
+      console.log('Modèle RNN-LSTM chargé avec succès');
+    } catch (error) {
+      console.error('Erreur lors du chargement du modèle RNN-LSTM:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Libère la mémoire utilisée par le modèle
+   */
+  dispose(): void {
+    if (this.model) {
+      this.model.dispose();
+      this.model = null;
+    }
+
+    if (this.scaler) {
+      this.scaler.mean.dispose();
+      this.scaler.std.dispose();
+      this.scaler = null;
+    }
+
+    this.isTrained = false;
+  }
+
+  /**
+   * Retourne les informations sur le modèle
+   */
+  getModelInfo(): any {
+    return {
+      isTrained: this.isTrained,
+      hasModel: this.model !== null,
+      hasScaler: this.scaler !== null,
+      config: this.config,
+      trainingHistory: this.trainingHistory
+    };
+  }
+
+  /**
+   * Évalue le modèle sur un ensemble de test
+   */
+  async evaluate(testResults: DrawResult[]): Promise<{
+    loss: number;
+    accuracy: number;
+    predictions: MLPrediction[];
+  }> {
+    if (!this.isTrained || !this.model) {
+      throw new Error('Le modèle doit être entraîné avant l\'évaluation');
+    }
+
+    const { sequences, labels } = this.prepareSequentialData(testResults);
+
+    // Évaluation du modèle
+    const evaluation = await this.model.evaluate(sequences, labels, { verbose: 0 }) as tf.Scalar[];
+    const loss = await evaluation[0].data();
+    const accuracy = await evaluation[1].data();
+
+    // Générer les prédictions
+    const predictions = await this.predict(testResults);
+
+    // Nettoyer
+    sequences.dispose();
+    labels.dispose();
+    evaluation.forEach(tensor => tensor.dispose());
+
+    return {
+      loss: loss[0],
+      accuracy: accuracy[0],
+      predictions
+    };
+  }
+
+  /**
+   * Analyse la convergence de l'entraînement
+   */
+  analyzeConvergence(): {
+    hasConverged: boolean;
+    bestEpoch: number;
+    finalLoss: number;
+    improvementRate: number;
+  } {
+    if (!this.trainingHistory) {
+      return {
+        hasConverged: false,
+        bestEpoch: 0,
+        finalLoss: Infinity,
+        improvementRate: 0
+      };
+    }
+
+    const losses = this.trainingHistory.history.loss || [];
+    const valLosses = this.trainingHistory.history.val_loss || [];
+
+    if (losses.length === 0) {
+      return {
+        hasConverged: false,
+        bestEpoch: 0,
+        finalLoss: Infinity,
+        improvementRate: 0
+      };
+    }
+
+    // Trouver la meilleure époque (plus faible val_loss)
+    let bestEpoch = 0;
+    let bestLoss = Infinity;
+
+    valLosses.forEach((loss, index) => {
+      if (loss < bestLoss) {
+        bestLoss = loss;
+        bestEpoch = index;
+      }
+    });
+
+    // Calculer le taux d'amélioration
+    const initialLoss = losses[0];
+    const finalLoss = losses[losses.length - 1];
+    const improvementRate = initialLoss > 0 ? (initialLoss - finalLoss) / initialLoss : 0;
+
+    // Vérifier la convergence (pas d'amélioration significative dans les dernières époques)
+    const lastEpochs = valLosses.slice(-10);
+    const avgLastLoss = lastEpochs.reduce((a, b) => a + b, 0) / lastEpochs.length;
+    const hasConverged = Math.abs(avgLastLoss - bestLoss) < 0.001;
+
+    return {
+      hasConverged,
+      bestEpoch,
+      finalLoss,
+      improvementRate
+    };
+  }
+}
 
     await this.model.save(`${path}/rnn_lstm_model`);
     
