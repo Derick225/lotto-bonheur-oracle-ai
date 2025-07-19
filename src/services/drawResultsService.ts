@@ -521,17 +521,16 @@ export class DrawResultsService {
       throw error;
     }
   }
-}
 
   /**
    * Valide les données d'import
    */
-  validateImportData(data: any[]): Array<{
+  validateImportData(data: any[]): Array<({
     row: number;
     data: any;
     errors: string[];
     valid: boolean;
-  }> {
+  })> {
     return data.map((item, index) => {
       const validation = validateDrawResult(item);
       return {
