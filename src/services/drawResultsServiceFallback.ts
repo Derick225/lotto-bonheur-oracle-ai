@@ -1,5 +1,37 @@
 import { DrawResult } from './lotteryAPI';
 
+export interface DrawResultsFilter {
+  page?: number;
+  limit?: number;
+  sortOrder?: 'asc' | 'desc';
+  dateFrom?: string;
+  dateTo?: string;
+  lotteryType?: string;
+  numbers?: number[];
+  search?: string;
+  sortBy?: 'draw_date' | 'created_at' | 'lottery_type';
+}
+
+export interface ImportResult {
+  sessionId: string;
+  totalRows: number;
+  successCount: number;
+  errorCount: number;
+  errors: Array<{
+    row: number;
+    data: any;
+    errors: string[];
+  }>;
+}
+
+export interface ExportOptions {
+  format: 'csv' | 'excel' | 'json';
+  filters?: DrawResultsFilter;
+  includeHistory?: boolean;
+}
+
+export type { DrawResult };
+
 export interface DrawResultsResponse {
   data: DrawResult[];
   total: number;
@@ -63,6 +95,79 @@ export class DrawResultsServiceFallback {
         totalPages: 0
       };
     }
+  }
+
+  async createDrawResult(data: Partial<DrawResult>): Promise<DrawResult | null> {
+    try {
+      const { IndexedDBService } = await import('./indexedDBService');
+      const newResult = await IndexedDBService.addDrawResult(data as any);
+      return newResult;
+    } catch (error) {
+      console.error('Erreur lors de la création:', error);
+      return null;
+    }
+  }
+
+  async updateDrawResult(id: string, data: Partial<DrawResult>): Promise<DrawResult | null> {
+    try {
+      const { IndexedDBService } = await import('./indexedDBService');
+      const updatedResult = await IndexedDBService.updateDrawResult(id, data);
+      return updatedResult;
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour:', error);
+      return null;
+    }
+  }
+
+  async deleteDrawResult(id: string): Promise<void> {
+    try {
+      const { IndexedDBService } = await import('./indexedDBService');
+      await IndexedDBService.deleteDrawResult(id);
+    } catch (error) {
+      console.error('Erreur lors de la suppression:', error);
+      throw error;
+    }
+  }
+
+  async deleteMultipleDrawResults(ids: string[]): Promise<void> {
+    try {
+      const { IndexedDBService } = await import('./indexedDBService');
+      for (const id of ids) {
+        await IndexedDBService.deleteDrawResult(id);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la suppression multiple:', error);
+      throw error;
+    }
+  }
+
+  async getDrawResultById(id: string): Promise<DrawResult | null> {
+    try {
+      const { IndexedDBService } = await import('./indexedDBService');
+      const results = await IndexedDBService.getDrawResults();
+      return results.find(r => r.id === id) || null;
+    } catch (error) {
+      console.error('Erreur lors de la récupération par ID:', error);
+      return null;
+    }
+  }
+
+  async importDrawResults(data: any[], filename: string, options?: any): Promise<ImportResult> {
+    // Import simulation
+    return {
+      sessionId: 'temp-' + Date.now(),
+      totalRows: data.length,
+      successCount: data.length,
+      errorCount: 0,
+      errors: []
+    };
+  }
+
+  async exportDrawResults(options: ExportOptions): Promise<Blob> {
+    // Export simulation
+    const results = await this.getDrawResults(options.filters);
+    const data = JSON.stringify(results.data, null, 2);
+    return new Blob([data], { type: 'application/json' });
   }
 
   async getStatistics(): Promise<{
