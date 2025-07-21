@@ -38,8 +38,8 @@ const Index = () => {
 
   const loadDashboardData = async () => {
     try {
-      // Charger les statistiques réelles depuis drawResultsService
-      const { drawResultsService } = await import('@/services/drawResultsService');
+      // Charger les statistiques réelles depuis le service fallback
+      const { drawResultsService } = await import('@/services/drawResultsServiceFallback');
       const service = drawResultsService;
       
       const statistics = await service.getStatistics();

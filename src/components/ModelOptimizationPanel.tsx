@@ -174,7 +174,7 @@ export const ModelOptimizationPanel: React.FC = () => {
   const runValidation = async () => {
     setIsValidating(true);
     try {
-      const results = await IndexedDBService.getAllResults();
+      const results = await IndexedDBService.getDrawResults();
       if (results.length < 100) {
         throw new Error('Données insuffisantes pour la validation');
       }
@@ -208,7 +208,7 @@ export const ModelOptimizationPanel: React.FC = () => {
   const runBacktest = async () => {
     setIsBacktesting(true);
     try {
-      const results = await IndexedDBService.getAllResults();
+      const results = await IndexedDBService.getDrawResults();
       if (results.length < 200) {
         throw new Error('Données insuffisantes pour le backtesting');
       }

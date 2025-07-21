@@ -357,7 +357,7 @@ export class PredictionService {
     console.log('🎯 Optimisation automatique des modèles...');
 
     // Récupérer les données historiques pour l'optimisation
-    const historicalData = await IndexedDBService.getAllResults();
+    const historicalData = await IndexedDBService.getDrawResults();
     if (historicalData.length < 100) {
       console.warn('⚠️ Données insuffisantes pour l\'optimisation, utilisation des paramètres par défaut');
       return;

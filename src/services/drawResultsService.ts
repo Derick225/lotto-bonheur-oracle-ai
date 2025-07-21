@@ -123,7 +123,7 @@ export class DrawResultsService {
         throw new Error(`Erreur lors de la récupération des tirages: ${result.error.message}`);
       }
 
-      const total = result.count || 0;
+      const total = result.count ?? result.data?.length ?? 0;
       const totalPages = Math.ceil(total / limit);
 
       AuditService.logInfo('draw_results', `Récupération de ${result.data?.length || 0} tirages`);
@@ -414,8 +414,8 @@ export class DrawResultsService {
       });
 
       // Traitement des résultats
-      const totalDraws = totalResult.count || 0;
-      const recentDraws = recentResult.count || 0;
+      const totalDraws = totalResult.count ?? totalResult.data?.length ?? 0;
+      const recentDraws = recentResult.count ?? recentResult.data?.length ?? 0;
 
       const lotteryTypes = typesResult.data ? 
         Object.entries(
@@ -779,4 +779,5 @@ export class DrawResultsService {
 }
 
 // Instance singleton
+// Export de l'instance singleton du service
 export const drawResultsService = DrawResultsService.getInstance();
