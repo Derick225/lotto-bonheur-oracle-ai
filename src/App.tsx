@@ -67,7 +67,7 @@ const App = () => (
                   <Route path="/draw/:drawName/prediction" element={<DrawPredictionPage />} />
                   <Route path="/draw/:drawName/consult" element={<ConsultPage />} />
                   <Route path="/draw/:drawName/history" element={<HistoryPage />} />
-                  <Route path="/admin" element={<AdminPage />} />
+                  <Route path="/admin/*" element={<AdminPage />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>

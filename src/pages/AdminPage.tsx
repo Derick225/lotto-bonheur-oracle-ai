@@ -288,7 +288,7 @@ export function AdminPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto space-y-6">
           <Tabs defaultValue="data" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4 lg:grid-cols-10">
+            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 xl:grid-cols-10 gap-1">
               <TabsTrigger value="dashboard" className="flex items-center gap-2">
                 <Database className="h-4 w-4" />
                 Dashboard

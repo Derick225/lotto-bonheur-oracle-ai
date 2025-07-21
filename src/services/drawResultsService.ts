@@ -6,6 +6,8 @@ import {
   validateDrawResult,
   formatDrawResultForDB 
 } from './supabaseClient';
+
+export type { DrawResult, DrawResultHistory, ImportSession };
 import { AuditService } from './auditService';
 
 export interface DrawResultsFilter {

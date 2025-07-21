@@ -25,8 +25,8 @@ const Index = () => {
   });
 
   useEffect(() => {
-    // Charger les statistiques réelles
-    loadRealStats();
+    // Charger les données du dashboard
+    loadDashboardData();
     
     // Envoyer une notification de bienvenue
     sendNotification({
@@ -35,6 +35,33 @@ const Index = () => {
       type: "success"
     });
   }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      // Charger les statistiques réelles depuis drawResultsService
+      const { drawResultsService } = await import('@/services/drawResultsService');
+      const service = drawResultsService;
+      
+      const statistics = await service.getStatistics();
+      const recentResults = await service.getDrawResults({ 
+        limit: 5, 
+        sortBy: 'draw_date', 
+        sortOrder: 'desc' 
+      });
+      
+      setStats({
+        totalDraws: statistics.totalDraws,
+        totalNumbers: statistics.totalDraws * 5, // Approximation
+        accuracy: 94.2, // Simulation pour l'instant
+        nextDrawTime: "2h 15m"
+      });
+      
+    } catch (error) {
+      console.error('Erreur lors du chargement des données:', error);
+      // Utiliser les données locales comme fallback
+      loadRealStats();
+    }
+  };
 
   const loadRealStats = async () => {
     try {
