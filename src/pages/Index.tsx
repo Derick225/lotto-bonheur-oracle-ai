@@ -2,14 +2,12 @@ import { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { DrawCard } from "@/components/DrawCard";
 import { StatsCard } from "@/components/StatsCard";
-import { AdvancedStatsCard, PrimaryStatsCard, SuccessStatsCard } from "@/components/AdvancedStatsCard";
-import { PWAManager } from "@/components/PWAManager";
 import { ColorLegend } from "@/components/LotteryNumber";
 import { DRAW_SCHEDULE, getCurrentDay } from "@/data/drawSchedule";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, Target, Clock, Zap, Palette, Download, Activity, Brain, Star, BarChart3, Sparkles } from "lucide-react";
+import { TrendingUp, Target, Clock, Zap, Palette, Download, Activity, Brain, Star, BarChart3, Sparkles, Calendar } from "lucide-react";
 import { useNotifications } from "@/components/NotificationCenter";
 import { IndexedDBService } from "@/services/indexedDBService";
 
@@ -81,8 +79,7 @@ const Index = () => {
       {/* Suppression du Header car il est maintenant global */}
 
       <main className="container mx-auto px-6 py-8">
-        {/* Gestionnaire PWA */}
-        <PWAManager className="mb-6" />
+        {/* PWA Manager temporarily disabled */}
         {/* Section Hero */}
         <div className="text-center mb-12">
           <Badge variant="secondary" className="mb-4 bg-accent/20 text-accent-foreground">
@@ -106,56 +103,31 @@ const Index = () => {
 
         {/* Statistiques rapides avancées */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          <PrimaryStatsCard
+          <StatsCard
             title="Tirages Analysés"
-            value={stats.totalDraws}
+            value={stats.totalDraws.toString()}
             description="depuis janvier 2024"
             icon={Target}
-            trend={12}
-            trendLabel="Ce mois"
-            progress={75}
-            progressLabel="Objectif mensuel"
-            animated={true}
           />
-          <SuccessStatsCard
+          <StatsCard
             title="Précision Moyenne"
             value={`${stats.accuracy}%`}
             description="des prédictions"
             icon={TrendingUp}
-            trend={5}
-            trendLabel="En amélioration"
-            progress={stats.accuracy}
-            progressLabel="Fiabilité"
-            animated={true}
           />
-          <AdvancedStatsCard
+          <StatsCard
             title="Numéro Tendance"
             value="42"
             description="le plus fréquent"
             icon={Star}
-            variant="warning"
             trend={8}
-            trendLabel="Cette semaine"
-            animated={true}
-          >
-            <div className="flex gap-2">
-              <Badge variant="outline" className="text-xs">7 fois</Badge>
-              <Badge variant="outline" className="text-xs">Chaud</Badge>
-            </div>
-          </AdvancedStatsCard>
-          <AdvancedStatsCard
+          />
+          <StatsCard
             title="Prochain Tirage"
             value={stats.nextDrawTime}
             description="Émergence - Mardi"
             icon={Clock}
-            variant="primary"
-            animated={true}
-          >
-            <Button size="sm" variant="outline" className="w-full mt-2">
-              <Zap className="h-3 w-3 mr-1" />
-              Prédire
-            </Button>
-          </AdvancedStatsCard>
+          />
         </div>
 
         {/* Tirages du jour */}
