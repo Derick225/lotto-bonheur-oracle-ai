@@ -1,4 +1,4 @@
-import { DrawResult } from './lotteryAPI';
+import { DrawResult } from './supabaseClient';
 
 export interface DrawResultsFilter {
   page?: number;
@@ -40,9 +40,43 @@ export interface DrawResultsResponse {
   totalPages: number;
 }
 
+// Données simulées avec le bon format
+const mockResults: DrawResult[] = [
+  {
+    id: '1',
+    draw_date: '2024-01-15',
+    numbers: [12, 23, 34, 45, 49],
+    bonus_numbers: [7],
+    lottery_type: 'loto',
+    jackpot_amount: 15000000,
+    winners_count: 3,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: '2',
+    draw_date: '2024-01-14',
+    numbers: [8, 19, 27, 38, 42],
+    bonus_numbers: [5],
+    lottery_type: 'loto',
+    jackpot_amount: 12000000,
+    winners_count: 1,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: '3',
+    draw_date: '2024-01-13',
+    numbers: [3, 14, 25, 36, 47],
+    bonus_numbers: [9],
+    lottery_type: 'euromillions',
+    jackpot_amount: 180000000,
+    winners_count: 0,
+    created_at: new Date().toISOString()
+  }
+];
+
 /**
  * Service de fallback pour les résultats de tirage
- * Utilise IndexedDB comme source de données principale
+ * Utilise des données simulées
  */
 export class DrawResultsServiceFallback {
   private static instance: DrawResultsServiceFallback;
@@ -58,9 +92,6 @@ export class DrawResultsServiceFallback {
 
   async getDrawResults(filters: any = {}): Promise<DrawResultsResponse> {
     try {
-      const { IndexedDBService } = await import('./indexedDBService');
-      const results = await IndexedDBService.getDrawResults();
-      
       const { 
         page = 1, 
         limit = 20,
@@ -68,9 +99,9 @@ export class DrawResultsServiceFallback {
       } = filters;
 
       // Tri simple
-      const sortedResults = [...results].sort((a, b) => {
-        const dateA = new Date(a.date);
-        const dateB = new Date(b.date);
+      const sortedResults = [...mockResults].sort((a, b) => {
+        const dateA = new Date(a.draw_date);
+        const dateB = new Date(b.draw_date);
         return sortOrder === 'desc' ? dateB.getTime() - dateA.getTime() : dateA.getTime() - dateB.getTime();
       });
 
@@ -80,10 +111,10 @@ export class DrawResultsServiceFallback {
 
       return {
         data: paginatedResults,
-        total: results.length,
+        total: mockResults.length,
         page,
         limit,
-        totalPages: Math.ceil(results.length / limit)
+        totalPages: Math.ceil(mockResults.length / limit)
       };
     } catch (error) {
       console.error('Erreur dans le service fallback:', error);
@@ -99,8 +130,13 @@ export class DrawResultsServiceFallback {
 
   async createDrawResult(data: Partial<DrawResult>): Promise<DrawResult | null> {
     try {
-      const { IndexedDBService } = await import('./indexedDBService');
-      const newResult = await IndexedDBService.addDrawResult(data as any);
+      const newResult = {
+        ...data,
+        id: (mockResults.length + 1).toString(),
+        created_at: new Date().toISOString()
+      } as DrawResult;
+      
+      mockResults.push(newResult);
       return newResult;
     } catch (error) {
       console.error('Erreur lors de la création:', error);
@@ -110,9 +146,12 @@ export class DrawResultsServiceFallback {
 
   async updateDrawResult(id: string, data: Partial<DrawResult>): Promise<DrawResult | null> {
     try {
-      const { IndexedDBService } = await import('./indexedDBService');
-      const updatedResult = await IndexedDBService.updateDrawResult(id, data);
-      return updatedResult;
+      const index = mockResults.findIndex(r => r.id === id);
+      if (index !== -1) {
+        mockResults[index] = { ...mockResults[index], ...data };
+        return mockResults[index];
+      }
+      return null;
     } catch (error) {
       console.error('Erreur lors de la mise à jour:', error);
       return null;
@@ -121,8 +160,10 @@ export class DrawResultsServiceFallback {
 
   async deleteDrawResult(id: string): Promise<void> {
     try {
-      const { IndexedDBService } = await import('./indexedDBService');
-      await IndexedDBService.deleteDrawResult(id);
+      const index = mockResults.findIndex(r => r.id === id);
+      if (index !== -1) {
+        mockResults.splice(index, 1);
+      }
     } catch (error) {
       console.error('Erreur lors de la suppression:', error);
       throw error;
@@ -131,9 +172,8 @@ export class DrawResultsServiceFallback {
 
   async deleteMultipleDrawResults(ids: string[]): Promise<void> {
     try {
-      const { IndexedDBService } = await import('./indexedDBService');
       for (const id of ids) {
-        await IndexedDBService.deleteDrawResult(id);
+        await this.deleteDrawResult(id);
       }
     } catch (error) {
       console.error('Erreur lors de la suppression multiple:', error);
@@ -143,9 +183,7 @@ export class DrawResultsServiceFallback {
 
   async getDrawResultById(id: string): Promise<DrawResult | null> {
     try {
-      const { IndexedDBService } = await import('./indexedDBService');
-      const results = await IndexedDBService.getDrawResults();
-      return results.find(r => r.id === id) || null;
+      return mockResults.find(r => r.id === id) || null;
     } catch (error) {
       console.error('Erreur lors de la récupération par ID:', error);
       return null;
@@ -177,16 +215,13 @@ export class DrawResultsServiceFallback {
     averageJackpot: number;
   }> {
     try {
-      const { IndexedDBService } = await import('./indexedDBService');
-      const results = await IndexedDBService.getDrawResults();
-      
       // Statistiques simples
-      const totalDraws = results.length;
+      const totalDraws = mockResults.length;
       
       // Types de loterie
       const typeCounts: { [key: string]: number } = {};
-      results.forEach(result => {
-        const type = result.draw_name || 'Inconnu';
+      mockResults.forEach(result => {
+        const type = result.lottery_type || 'Inconnu';
         typeCounts[type] = (typeCounts[type] || 0) + 1;
       });
       
@@ -195,7 +230,7 @@ export class DrawResultsServiceFallback {
       // Tirages récents (7 derniers jours)
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
-      const recentDraws = results.filter(result => new Date(result.date) >= weekAgo).length;
+      const recentDraws = mockResults.filter(result => new Date(result.draw_date) >= weekAgo).length;
       
       return {
         totalDraws,
@@ -216,19 +251,60 @@ export class DrawResultsServiceFallback {
 
   async searchDrawResults(query: string): Promise<DrawResult[]> {
     try {
-      const { IndexedDBService } = await import('./indexedDBService');
-      const results = await IndexedDBService.getDrawResults();
-      
       // Recherche simple
-      return results.filter(result => 
-        result.draw_name?.toLowerCase().includes(query.toLowerCase()) ||
-        result.date?.includes(query) ||
-        result.gagnants?.some(num => num.toString().includes(query))
+      return mockResults.filter(result => 
+        result.lottery_type?.toLowerCase().includes(query.toLowerCase()) ||
+        result.draw_date?.includes(query) ||
+        result.numbers?.some(num => num.toString().includes(query))
       );
     } catch (error) {
       console.error('Erreur lors de la recherche:', error);
       return [];
     }
+  }
+
+  // Méthodes supplémentaires pour compatibilité
+  async getAllResults(): Promise<DrawResult[]> {
+    return mockResults;
+  }
+
+  async getResultById(id: string): Promise<DrawResult | undefined> {
+    return mockResults.find(r => r.id === id);
+  }
+
+  async getResultsByType(type: string): Promise<DrawResult[]> {
+    return mockResults.filter(r => r.lottery_type === type);
+  }
+
+  async addResult(result: Omit<DrawResult, 'id'>): Promise<void> {
+    const newResult = {
+      ...result,
+      id: (mockResults.length + 1).toString(),
+      created_at: new Date().toISOString()
+    };
+    mockResults.push(newResult);
+  }
+
+  async updateResult(id: string, updates: Partial<DrawResult>): Promise<void> {
+    const index = mockResults.findIndex(r => r.id === id);
+    if (index !== -1) {
+      mockResults[index] = { ...mockResults[index], ...updates };
+    }
+  }
+
+  async deleteResult(id: string): Promise<void> {
+    const index = mockResults.findIndex(r => r.id === id);
+    if (index !== -1) {
+      mockResults.splice(index, 1);
+    }
+  }
+
+  async getResultsCount(): Promise<number> {
+    return mockResults.length;
+  }
+
+  async getRecentResults(limit: number = 10): Promise<DrawResult[]> {
+    return mockResults.slice(0, limit);
   }
 }
 

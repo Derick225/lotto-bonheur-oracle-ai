@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
+import { DrawResult } from '../services/supabaseClient';
 import { 
   drawResultsService, 
-  DrawResult, 
   DrawResultsFilter, 
   DrawResultsResponse,
   ImportResult,
   ExportOptions 
-} from '../services/drawResultsService';
+} from '../services/drawResultsServiceFallback';
 import { useToast } from './use-toast';
 
 export interface UseDrawResultsOptions {

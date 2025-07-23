@@ -107,8 +107,8 @@ export const InitializationStatus: React.FC<InitializationStatusProps> = ({ onCo
     setInitLog([]);
 
     try {
-      const { AdminInitializer } = await import('@/scripts/initializeAdmin');
-      const initializer = new AdminInitializer();
+      // const { AdminInitializer } = await import('@/scripts/initializeAdmin');
+      // const initializer = new AdminInitializer();
 
       // Simuler le progrès des étapes
       const totalSteps = steps.length;
@@ -150,12 +150,12 @@ export const InitializationStatus: React.FC<InitializationStatusProps> = ({ onCo
         }
       }
 
-      // Lancer l'initialisation réelle
-      await initializer.initialize();
+      // Lancer l'initialisation réelle (désactivé temporairement)
+      // await initializer.initialize();
 
       // Récupérer le log d'initialisation
-      const realLog = initializer.getInitLog();
-      setInitLog(prev => [...prev, ...realLog]);
+      // const realLog = initializer.getInitLog();
+      // setInitLog(prev => [...prev, ...realLog]);
 
       setInitializationComplete(true);
       

@@ -648,7 +648,7 @@ export function AdminPage() {
             </TabsContent>
 
             <TabsContent value="monitoring">
-              <MonitoringDashboard />
+              {/* <MonitoringDashboard /> */}
             </TabsContent>
 
             <TabsContent value="stats">

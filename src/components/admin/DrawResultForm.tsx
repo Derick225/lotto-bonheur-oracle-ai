@@ -17,8 +17,7 @@ import {
   Info,
   Shuffle
 } from 'lucide-react';
-import { DrawResult } from '@/services/drawResultsService';
-import { validateDrawResult } from '@/services/supabaseClient';
+import { DrawResult, validateDrawResult } from '@/services/supabaseClient';
 
 interface DrawResultFormProps {
   initialData?: DrawResult;
