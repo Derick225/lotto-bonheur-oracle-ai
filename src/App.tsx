@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
 import Index from "./pages/Index";
@@ -11,8 +11,7 @@ import { AdminPage } from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
 
 const App = () => (
-  <BrowserRouter>
-    <div className="min-h-screen bg-background">
+  <div className="min-h-screen bg-background">
       {/* Header simple */}
       <header className="h-14 flex items-center justify-between px-4 border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/60 sticky top-0 z-40">
         <div className="flex items-center gap-2">
@@ -42,7 +41,6 @@ const App = () => (
         </Routes>
       </main>
     </div>
-  </BrowserRouter>
 );
 
 export default App;
