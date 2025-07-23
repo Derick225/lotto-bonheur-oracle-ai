@@ -18,7 +18,7 @@ import { Header } from "@/components/Header";
 import { LotteryNumber } from "@/components/LotteryNumber";
 import { SyncStatusDetailed } from "@/components/SyncStatus";
 import { ModelOptimizationPanel } from "@/components/ModelOptimizationPanel";
-import { MonitoringDashboard } from "@/components/MonitoringDashboard";
+// import { MonitoringDashboard } from "@/components/MonitoringDashboard";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import { UserManagementPanel } from "@/components/admin/UserManagementPanel";
 import { AuditLogsPanel } from "@/components/admin/AuditLogsPanel";
