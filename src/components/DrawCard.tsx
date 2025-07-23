@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,21 +44,29 @@ export function DrawCard({ name, time, day, numbers, isToday = false }: DrawCard
         </div>
         
         <div className="grid grid-cols-2 gap-2">
-          <Button size="sm" variant="outline" className="gap-2" disabled>
-            <Database className="h-4 w-4" />
-            Données
+          <Button size="sm" variant="outline" className="gap-2" asChild>
+            <Link to={`/draw/${encodeURIComponent(name)}/data`}>
+              <Database className="h-4 w-4" />
+              Données
+            </Link>
           </Button>
-          <Button size="sm" variant="outline" className="gap-2" disabled>
-            <BarChart3 className="h-4 w-4" />
-            Stats
+          <Button size="sm" variant="outline" className="gap-2" asChild>
+            <Link to={`/draw/${encodeURIComponent(name)}/stats`}>
+              <BarChart3 className="h-4 w-4" />
+              Stats
+            </Link>
           </Button>
-          <Button size="sm" variant="outline" className="gap-2" disabled>
-            <TrendingUp className="h-4 w-4" />
-            Prédiction
+          <Button size="sm" variant="outline" className="gap-2" asChild>
+            <Link to={`/draw/${encodeURIComponent(name)}/prediction`}>
+              <TrendingUp className="h-4 w-4" />
+              Prédiction
+            </Link>
           </Button>
-          <Button size="sm" variant="outline" className="gap-2" disabled>
-            <Calendar className="h-4 w-4" />
-            Historique
+          <Button size="sm" variant="outline" className="gap-2" asChild>
+            <Link to={`/history`}>
+              <Calendar className="h-4 w-4" />
+              Historique
+            </Link>
           </Button>
         </div>
       </CardContent>
