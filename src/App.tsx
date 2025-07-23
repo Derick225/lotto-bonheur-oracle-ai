@@ -35,6 +35,9 @@ const App = () => (
           <Route path="/draw-data" element={<DrawDataPage />} />
           <Route path="/draw-stats" element={<DrawStatsPage />} />
           <Route path="/draw-prediction" element={<DrawPredictionPage />} />
+          <Route path="/draw/:name/data" element={<DrawDataPage />} />
+          <Route path="/draw/:name/stats" element={<DrawStatsPage />} />
+          <Route path="/draw/:name/prediction" element={<DrawPredictionPage />} />
           <Route path="/consult" element={<ConsultPage />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/admin" element={<AdminPage />} />
