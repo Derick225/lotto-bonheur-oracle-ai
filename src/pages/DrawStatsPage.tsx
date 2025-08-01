@@ -66,7 +66,7 @@ export function DrawStatsPage() {
     .map(([num, freq]) => ({ number: parseInt(num), frequency: freq }))
     .sort((a, b) => b.frequency - a.frequency);
 
-  const maxFrequency = Math.max(...Object.values(stats.frequency));
+  const maxFrequency = Math.max(...Object.values(stats.frequency), 1); // Minimum 1 pour éviter division par 0
 
   return (
     <div className="min-h-screen bg-background">
@@ -158,13 +158,16 @@ export function DrawStatsPage() {
                         <span className="text-muted-foreground">{frequency} fois</span>
                       </div>
                       <Progress 
-                        value={(frequency / maxFrequency) * 100} 
+                        value={maxFrequency > 0 ? Math.min(100, (frequency / maxFrequency) * 100) : 0} 
                         className="h-2"
                       />
                     </div>
                     <div className="text-right text-sm">
                       <div className="text-foreground font-medium">
-                        {((frequency / maxFrequency) * 100).toFixed(1)}%
+                        {maxFrequency > 0 ? 
+                          Math.min(100, (frequency / maxFrequency) * 100).toFixed(1) : 
+                          '0.0'
+                        }%
                       </div>
                       <div className="text-muted-foreground text-xs">
                         {stats.lastAppearance[number] ? 
