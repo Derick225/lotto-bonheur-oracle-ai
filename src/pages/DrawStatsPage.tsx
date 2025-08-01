@@ -14,10 +14,6 @@ interface Statistics {
 }
 
 export function DrawStatsPage() {
-  console.log('DrawStatsPage: Component starting to render');
-  console.log('React:', React);
-  console.log('useState:', useState);
-  console.log('useEffect:', useEffect);
   const { name: drawName } = useParams<{ name: string }>();
   const [stats, setStats] = useState<Statistics | null>(null);
   const [loading, setLoading] = useState(true);
