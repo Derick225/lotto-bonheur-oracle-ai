@@ -3,14 +3,9 @@ import { useParams, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LotteryNumber, ColorLegend } from '@/components/LotteryNumber';
-import { AdvancedVisualization } from '@/components/AdvancedVisualization';
-import { PWAManager } from '@/components/PWAManager';
-import { SyncService } from '@/services/syncService';
-import { DrawResult } from '@/services/lotteryAPI';
-import { ArrowLeft, TrendingUp, TrendingDown, Loader2, BarChart3, Palette, Grid3X3 } from 'lucide-react';
+// import { Progress } from '@/components/ui/progress'; // Temporarily disabled
+import { LotteryNumber } from '@/components/LotteryNumber';
+import { ArrowLeft, TrendingUp, TrendingDown, Loader2, BarChart3 } from 'lucide-react';
 
 interface Statistics {
   frequency: { [key: number]: number };
@@ -19,6 +14,10 @@ interface Statistics {
 }
 
 export function DrawStatsPage() {
+  console.log('DrawStatsPage: Component starting to render');
+  console.log('React:', React);
+  console.log('useState:', useState);
+  console.log('useEffect:', useEffect);
   const { name: drawName } = useParams<{ name: string }>();
   const [stats, setStats] = useState<Statistics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -157,10 +156,14 @@ export function DrawStatsPage() {
                         <span className="text-foreground">Numéro {number}</span>
                         <span className="text-muted-foreground">{frequency} fois</span>
                       </div>
-                      <Progress 
-                        value={maxFrequency > 0 ? Math.min(100, (frequency / maxFrequency) * 100) : 0} 
-                        className="h-2"
-                      />
+                      <div className="w-full bg-secondary rounded-full h-2">
+                        <div 
+                          className="bg-primary h-2 rounded-full transition-all" 
+                          style={{ 
+                            width: `${maxFrequency > 0 ? Math.min(100, (frequency / maxFrequency) * 100) : 0}%` 
+                          }}
+                        />
+                      </div>
                     </div>
                     <div className="text-right text-sm">
                       <div className="text-foreground font-medium">
