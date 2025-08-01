@@ -21,6 +21,7 @@ const Index = () => {
     accuracy: 94.2,
     nextDrawTime: "2h 15m"
   });
+  const [latestResults, setLatestResults] = useState<{[key: string]: number[]}>({});
 
   useEffect(() => {
     // Charger les données du dashboard
@@ -42,7 +43,7 @@ const Index = () => {
       
       const statistics = await service.getStatistics();
       const recentResults = await service.getDrawResults({ 
-        limit: 5, 
+        limit: 10, 
         sortBy: 'draw_date', 
         sortOrder: 'desc' 
       });
@@ -53,6 +54,15 @@ const Index = () => {
         accuracy: 94.2, // Simulation pour l'instant
         nextDrawTime: "2h 15m"
       });
+
+      // Mapper les derniers résultats par nom de tirage
+      const resultsMap: {[key: string]: number[]} = {};
+      recentResults.data.forEach(result => {
+        if (result.lottery_type && result.numbers && !resultsMap[result.lottery_type]) {
+          resultsMap[result.lottery_type] = result.numbers;
+        }
+      });
+      setLatestResults(resultsMap);
       
     } catch (error) {
       console.error('Erreur lors du chargement des données:', error);
@@ -148,6 +158,7 @@ const Index = () => {
                 name={name}
                 time={time}
                 day={currentDay}
+                numbers={latestResults[name]}
                 isToday={true}
               />
             ))}
@@ -194,6 +205,7 @@ const Index = () => {
                       name={name}
                       time={time}
                       day={day}
+                      numbers={latestResults[name]}
                       isToday={day === currentDay}
                     />
                   ))}

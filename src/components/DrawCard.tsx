@@ -15,7 +15,8 @@ interface DrawCardProps {
 }
 
 export function DrawCard({ name, time, day, numbers, isToday = false }: DrawCardProps) {
-  const sampleNumbers = numbers || [12, 25, 34, 56, 78]; // Numéros d'exemple
+  const hasRealNumbers = numbers && numbers.length > 0;
+  const displayNumbers = hasRealNumbers ? numbers : [12, 25, 34, 56, 78]; // Numéros d'exemple
 
   return (
     <Card className="gradient-card border-border">
@@ -38,10 +39,17 @@ export function DrawCard({ name, time, day, numbers, isToday = false }: DrawCard
       
       <CardContent className="space-y-4">
         <div className="flex gap-2 justify-center">
-          {sampleNumbers.map((number, index) => (
+          {displayNumbers.map((number, index) => (
             <LotteryNumber key={index} number={number} />
           ))}
         </div>
+        {!hasRealNumbers && (
+          <div className="text-center">
+            <Badge variant="outline" className="text-muted-foreground border-muted-foreground/50">
+              Résultats non disponibles
+            </Badge>
+          </div>
+        )}
         
         <div className="grid grid-cols-2 gap-2">
           <Button size="sm" variant="outline" className="gap-2" asChild>
