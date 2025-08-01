@@ -12,7 +12,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 export function DrawDataPage() {
-  const { drawName } = useParams<{ drawName: string }>();
+  const { name: drawName } = useParams<{ name: string }>();
   const [results, setResults] = useState<DrawResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

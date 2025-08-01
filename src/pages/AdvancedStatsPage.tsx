@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 
 export function AdvancedStatsPage() {
-  const { drawName } = useParams<{ drawName: string }>();
+  const { name: drawName } = useParams<{ name: string }>();
   const [results, setResults] = useState<DrawResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');

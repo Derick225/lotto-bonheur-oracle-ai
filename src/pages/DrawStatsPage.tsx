@@ -19,7 +19,7 @@ interface Statistics {
 }
 
 export function DrawStatsPage() {
-  const { drawName } = useParams<{ drawName: string }>();
+  const { name: drawName } = useParams<{ name: string }>();
   const [stats, setStats] = useState<Statistics | null>(null);
   const [loading, setLoading] = useState(true);
 

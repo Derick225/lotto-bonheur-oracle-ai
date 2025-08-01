@@ -17,7 +17,7 @@ import { fr } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 
 export function HistoryPage() {
-  const { drawName } = useParams<{ drawName: string }>();
+  const { name: drawName } = useParams<{ name: string }>();
   const [results, setResults] = useState<DrawResult[]>([]);
   const [filteredResults, setFilteredResults] = useState<DrawResult[]>([]);
   const [loading, setLoading] = useState(true);

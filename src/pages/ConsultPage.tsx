@@ -12,7 +12,7 @@ import { DrawResult, LotteryAPIService } from '@/services/lotteryAPI';
 import { ArrowLeft, Search, TrendingUp, Users, Loader2 } from 'lucide-react';
 
 export function ConsultPage() {
-  const { drawName } = useParams<{ drawName: string }>();
+  const { name: drawName } = useParams<{ name: string }>();
   const [results, setResults] = useState<DrawResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null);
