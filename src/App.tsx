@@ -5,7 +5,7 @@ import { Menu } from "lucide-react";
 import Index from "./pages/Index";
 import { DrawDataPage } from "./pages/DrawDataPage";
 import { DrawStatsPage } from "./pages/DrawStatsPage";
-import DrawPredictionPage from "./pages/DrawPredictionPage";
+import { DrawPredictionPage } from "./pages/DrawPredictionPage";
 import { ConsultPage } from "./pages/ConsultPage";
 import { HistoryPage } from "./pages/HistoryPage";
 import { AdminPage } from "./pages/AdminPage";

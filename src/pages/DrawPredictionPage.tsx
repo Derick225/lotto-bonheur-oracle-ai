@@ -158,4 +158,5 @@ const DrawPredictionPage: React.FC = () => {
   );
 };
 
+export { DrawPredictionPage };
 export default DrawPredictionPage;
