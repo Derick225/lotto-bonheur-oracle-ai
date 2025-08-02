@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_sessions: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          ip_address: unknown | null
+          is_active: boolean
+          token: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          ip_address?: unknown | null
+          is_active?: boolean
+          token: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          ip_address?: unknown | null
+          is_active?: boolean
+          token?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_users: {
         Row: {
           created_at: string | null
@@ -190,6 +231,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      create_admin_session: {
+        Args: {
+          p_user_id: string
+          p_ip_address?: unknown
+          p_user_agent?: string
+        }
+        Returns: string
+      }
       get_global_stats: {
         Args: Record<PropertyKey, never>
         Returns: Json
@@ -202,9 +251,21 @@ export type Database = {
           percentage: number
         }[]
       }
+      hash_password: {
+        Args: { password: string }
+        Returns: string
+      }
+      invalidate_admin_session: {
+        Args: { session_token: string }
+        Returns: boolean
+      }
       is_admin_user: {
         Args: { user_email: string }
         Returns: boolean
+      }
+      validate_admin_session: {
+        Args: { session_token: string }
+        Returns: Json
       }
       validate_lottery_numbers: {
         Args: { numbers: number[] }
