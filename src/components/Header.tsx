@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PWAStatusBar } from "@/components/PWAManager";
+// import { PWAStatusBar } from "@/components/PWAManager";
 import { Sparkles, TrendingUp, Calendar, Settings, Shield, Menu, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
@@ -36,7 +36,7 @@ export function Header() {
 
           {/* Navigation desktop */}
           <div className="hidden md:flex items-center gap-3">
-            <PWAStatusBar />
+            {/* <PWAStatusBar /> */}
 
             {navigationItems.map((item) => (
               <Button
@@ -58,7 +58,7 @@ export function Header() {
 
           {/* Navigation mobile */}
           <div className="md:hidden flex items-center gap-2">
-            <PWAStatusBar />
+            {/* <PWAStatusBar /> */}
             <Button
               variant="ghost"
               size="sm"
