@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
@@ -10,9 +10,16 @@ import { ConsultPage } from "./pages/ConsultPage";
 import { HistoryPage } from "./pages/HistoryPage";
 import { AdminPage } from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
+import { SecurityConfigService } from "./services/securityConfig";
 
-const App = () => (
-  <div className="min-h-screen bg-background">
+const App = () => {
+  // Initialize security configuration on app start
+  useEffect(() => {
+    SecurityConfigService.initialize();
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-background">
       {/* Header simple */}
       <header className="h-14 flex items-center justify-between px-4 border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/60 sticky top-0 z-40">
         <div className="flex items-center gap-2">
@@ -45,6 +52,7 @@ const App = () => (
         </Routes>
       </main>
     </div>
-);
+  );
+};
 
 export default App;

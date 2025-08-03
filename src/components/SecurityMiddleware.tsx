@@ -65,7 +65,10 @@ export const SecurityMiddleware: React.FC<SecurityMiddlewareProps> = ({
 
         setIsLoading(false);
       } catch (err) {
-        console.error('Erreur de vérification de sécurité:', err);
+        // Log security errors without exposing sensitive information
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Erreur de vérification de sécurité:', err);
+        }
         setError('Erreur de vérification de sécurité');
         setIsLoading(false);
       }

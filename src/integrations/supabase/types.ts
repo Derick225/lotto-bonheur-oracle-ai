@@ -21,6 +21,7 @@ export type Database = {
           id: string
           ip_address: unknown | null
           is_active: boolean
+          last_accessed: string | null
           token: string
           user_agent: string | null
           user_id: string
@@ -31,6 +32,7 @@ export type Database = {
           id?: string
           ip_address?: unknown | null
           is_active?: boolean
+          last_accessed?: string | null
           token: string
           user_agent?: string | null
           user_id: string
@@ -41,6 +43,7 @@ export type Database = {
           id?: string
           ip_address?: unknown | null
           is_active?: boolean
+          last_accessed?: string | null
           token?: string
           user_agent?: string | null
           user_id?: string
@@ -262,6 +265,16 @@ export type Database = {
       is_admin_user: {
         Args: { user_email: string }
         Returns: boolean
+      }
+      log_security_event: {
+        Args: {
+          event_type: string
+          user_id?: string
+          ip_address?: unknown
+          user_agent?: string
+          details?: Json
+        }
+        Returns: undefined
       }
       validate_admin_session: {
         Args: { session_token: string }
