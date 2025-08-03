@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LotteryNumber, ColorLegend } from '@/components/LotteryNumber';
 import { AdvancedVisualization } from '@/components/AdvancedVisualization';
-import { PWAManager } from '@/components/PWAManager';
+// import { PWAManager } from '@/components/PWAManager';
 import { SyncService } from '@/services/syncService';
 import { DrawResult } from '@/services/lotteryAPI';
 import { 
@@ -102,8 +102,7 @@ export function AdvancedStatsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Gestionnaire PWA */}
-      <PWAManager className="container mx-auto px-4 pt-4" />
+      {/* PWA Manager temporarily disabled due to React context issues */}
       
       <div className="container mx-auto px-4 py-8">
         {/* En-tête */}
