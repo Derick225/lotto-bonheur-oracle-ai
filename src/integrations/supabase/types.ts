@@ -230,6 +230,14 @@ export type Database = {
         Args: { predicted: number[]; actual: number[] }
         Returns: number
       }
+      change_admin_password: {
+        Args: {
+          p_session_token: string
+          p_current_password: string
+          p_new_password: string
+        }
+        Returns: boolean
+      }
       cleanup_old_data: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -241,6 +249,15 @@ export type Database = {
           p_user_agent?: string
         }
         Returns: string
+      }
+      create_admin_user: {
+        Args: {
+          p_session_token: string
+          p_email: string
+          p_password: string
+          p_role?: string
+        }
+        Returns: Json
       }
       get_global_stats: {
         Args: Record<PropertyKey, never>
