@@ -246,6 +246,11 @@ export class SecureAuthService {
       if (authError || !result?.success) {
         throw new Error('Mot de passe actuel incorrect');
       }
+      // Vérifier si le nouveau mot de passe a fuité
+      const breachCount = await this.isPasswordBreached(newPassword);
+      if (breachCount > 0) {
+        throw new Error(`Mot de passe compromis (${breachCount} occurrences trouvées)`);
+      }
 
       // Hasher le nouveau mot de passe
       const { data: hashedPassword, error: hashError } = await supabase.rpc('hash_password', {
@@ -339,6 +344,20 @@ export class SecureAuthService {
   }
 
   /**
+   * Vérifie via HIBP si un mot de passe a fuité
+   */
+  private static async isPasswordBreached(password: string): Promise<number> {
+    const { data, error } = await supabase.functions.invoke('password-breach-check', {
+      body: { password }
+    });
+    if (error) {
+      throw new Error("Service de vérification des fuites indisponible");
+    }
+    const count = (data as any)?.count ?? 0;
+    return Number.isFinite(count) ? count : 0;
+  }
+
+  /**
    * Hash un mot de passe
    */
   static async hashPassword(password: string): Promise<string> {
@@ -362,6 +381,12 @@ export class SecureAuthService {
     }
 
     try {
+      // Vérifier si le mot de passe a fuité
+      const breachCount = await this.isPasswordBreached(password);
+      if (breachCount > 0) {
+        throw new Error(`Mot de passe compromis (${breachCount} occurrences trouvées)`);
+      }
+
       const hashedPassword = await this.hashPassword(password);
 
       const { data, error } = await supabase
