@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
+import { PWAManager } from "@/components/PWAManager";
 import Index from "./pages/Index";
 import { DrawDataPage } from "./pages/DrawDataPage";
 import { DrawStatsPage } from "./pages/DrawStatsPage";
@@ -27,6 +28,7 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <Toaster />
       <Sonner />
+      <PWAManager />
       <div className="min-h-screen bg-background">
       {/* Header simple */}
       <header className="h-14 flex items-center justify-between px-4 border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/60 sticky top-0 z-40">
