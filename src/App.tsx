@@ -1,5 +1,8 @@
 import React, { useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
 import Index from "./pages/Index";
@@ -12,6 +15,8 @@ import { AdminPage } from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
 import { SecurityConfigService } from "./services/securityConfig";
 
+const queryClient = new QueryClient();
+
 const App = () => {
   // Initialize security configuration on app start
   useEffect(() => {
@@ -19,7 +24,10 @@ const App = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background">
+    <QueryClientProvider client={queryClient}>
+      <Toaster />
+      <Sonner />
+      <div className="min-h-screen bg-background">
       {/* Header simple */}
       <header className="h-14 flex items-center justify-between px-4 border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/60 sticky top-0 z-40">
         <div className="flex items-center gap-2">
@@ -52,6 +60,7 @@ const App = () => {
         </Routes>
       </main>
     </div>
+    </QueryClientProvider>
   );
 };
 
