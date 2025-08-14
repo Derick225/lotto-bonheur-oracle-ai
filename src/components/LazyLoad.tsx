@@ -1,5 +1,4 @@
-import { Suspense, lazy, ComponentType } from 'react';
-import * as React from 'react';
+import { Suspense, lazy, ComponentType, useState, useEffect } from 'react';
 import { useIntersectionObserver } from '@/services/performanceService';
 import { Loader2 } from 'lucide-react';
 
@@ -32,8 +31,8 @@ export function LazyImage({
     rootMargin: '50px'
   });
 
-  const [imageLoaded, setImageLoaded] = React.useState(false);
-  const [imageError, setImageError] = React.useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   const handleLoad = () => {
     setImageLoaded(true);
@@ -267,7 +266,7 @@ export function usePreloadComponent(
   importFn: () => Promise<any>,
   condition: boolean = true
 ) {
-  React.useEffect(() => {
+  useEffect(() => {
     if (condition) {
       // Précharger le composant
       importFn().catch(console.error);
@@ -288,7 +287,7 @@ interface PreloaderProps {
 }
 
 export function Preloader({ resources }: PreloaderProps) {
-  React.useEffect(() => {
+  useEffect(() => {
     resources.forEach(resource => {
       const link = document.createElement('link');
       link.rel = 'preload';
@@ -342,7 +341,7 @@ export function ProgressiveImage({
   width,
   height
 }: ProgressiveImageProps) {
-  const [imageLoaded, setImageLoaded] = React.useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const [ref, isIntersecting] = useIntersectionObserver();
 
   return (

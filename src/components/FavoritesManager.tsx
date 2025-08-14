@@ -1,4 +1,4 @@
-import React from 'react';
+// No React import needed for functional components
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export const FavoritesManager: React.FC = () => {
