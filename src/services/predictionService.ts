@@ -298,7 +298,11 @@ export class PredictionService {
     return {
       numbers: [1, 7, 14, 21, 35].sort(),
       confidence: 0.3,
-      algorithm: 'Default Fallback'
+      algorithm: 'Default Fallback',
+      metadata: { 
+        features: { method: 'default_fallback', dataPoints: 0, totalDraws: 0 },
+        alternativePredictions: [[3, 9, 16, 22, 38]]
+      }
     };
   }
 
