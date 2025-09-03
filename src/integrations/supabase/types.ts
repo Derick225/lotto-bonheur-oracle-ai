@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -227,14 +227,14 @@ export type Database = {
         Returns: Json
       }
       calculate_prediction_accuracy: {
-        Args: { predicted: number[]; actual: number[] }
+        Args: { actual: number[]; predicted: number[] }
         Returns: number
       }
       change_admin_password: {
         Args: {
-          p_session_token: string
           p_current_password: string
           p_new_password: string
+          p_session_token: string
         }
         Returns: boolean
       }
@@ -244,18 +244,18 @@ export type Database = {
       }
       create_admin_session: {
         Args: {
-          p_user_id: string
           p_ip_address?: unknown
           p_user_agent?: string
+          p_user_id: string
         }
         Returns: string
       }
       create_admin_user: {
         Args: {
-          p_session_token: string
           p_email: string
           p_password: string
           p_role?: string
+          p_session_token: string
         }
         Returns: Json
       }
@@ -266,8 +266,8 @@ export type Database = {
       get_number_frequency: {
         Args: { p_draw_name: string; p_limit?: number }
         Returns: {
-          number: number
           frequency: number
+          number: number
           percentage: number
         }[]
       }
@@ -285,11 +285,11 @@ export type Database = {
       }
       log_security_event: {
         Args: {
+          details?: Json
           event_type: string
-          user_id?: string
           ip_address?: unknown
           user_agent?: string
-          details?: Json
+          user_id?: string
         }
         Returns: undefined
       }
