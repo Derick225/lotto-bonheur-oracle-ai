@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useNavigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -13,12 +13,15 @@ import { DrawPredictionPage } from "./pages/DrawPredictionPage";
 import { ConsultPage } from "./pages/ConsultPage";
 import { HistoryPage } from "./pages/HistoryPage";
 import { AdminPage } from "./pages/AdminPage";
+import { AuthPage } from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
 import { SecurityConfigService } from "./services/securityConfig";
 
 const queryClient = new QueryClient();
 
 const App = () => {
+  const navigate = useNavigate();
+  
   // Initialize security configuration on app start
   useEffect(() => {
     SecurityConfigService.initialize();
@@ -39,9 +42,9 @@ const App = () => {
           <h2 className="font-semibold text-foreground">Lotto Bonheur Oracle AI</h2>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            Admin
-          </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate('/auth')}>
+              Connexion
+            </Button>
         </div>
       </header>
 
@@ -56,6 +59,7 @@ const App = () => {
           <Route path="/draw/:name/stats" element={<DrawStatsPage />} />
           <Route path="/draw/:name/prediction" element={<DrawPredictionPage />} />
           <Route path="/consult" element={<ConsultPage />} />
+          <Route path="/auth" element={<AuthPage />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="*" element={<NotFound />} />
