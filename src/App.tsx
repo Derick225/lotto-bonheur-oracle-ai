@@ -12,6 +12,7 @@ import { DrawStatsPage } from "./pages/DrawStatsPage";
 import { DrawPredictionPage } from "./pages/DrawPredictionPage";
 import { ConsultPage } from "./pages/ConsultPage";
 import { HistoryPage } from "./pages/HistoryPage";
+import { AdvancedPredictionPage } from "./pages/AdvancedPredictionPage";
 import { AdminPage } from "./pages/AdminPage";
 import { AuthPage } from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
@@ -58,6 +59,9 @@ const App = () => {
           <Route path="/draw/:name/data" element={<DrawDataPage />} />
           <Route path="/draw/:name/stats" element={<DrawStatsPage />} />
           <Route path="/draw/:name/prediction" element={<DrawPredictionPage />} />
+          <Route path="/draw/:name/consulter" element={<ConsultPage />} />
+          <Route path="/draw/:name/history" element={<HistoryPage />} />
+          <Route path="/draw/:name/advanced-prediction" element={<AdvancedPredictionPage />} />
           <Route path="/consult" element={<ConsultPage />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/history" element={<HistoryPage />} />

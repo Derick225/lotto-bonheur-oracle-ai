@@ -103,7 +103,7 @@ const Index = () => {
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
             Découvrez les tendances, analysez les fréquences et obtenez des prédictions 
-            intelligentes basées sur l'historique depuis janvier 2024.
+            intelligentes basées sur l'historique étendu depuis 2020.
           </p>
           <Button size="lg" className="btn-hero gap-2 animate-bounce-subtle">
             <Zap className="h-5 w-5" />
@@ -116,7 +116,7 @@ const Index = () => {
           <StatsCard
             title="Tirages Analysés"
             value={stats.totalDraws.toString()}
-            description="depuis janvier 2024"
+            description="depuis 2020"
             icon={Target}
           />
           <StatsCard

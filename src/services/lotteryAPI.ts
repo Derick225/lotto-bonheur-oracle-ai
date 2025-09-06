@@ -364,15 +364,16 @@ export class LotteryAPIService {
   }
 
   /**
-   * Récupère l'historique complet depuis janvier 2024
+   * Récupère l'historique complet depuis 2020 (étendu)
    */
-  static async fetchHistoricalData(startYear: number = 2024): Promise<APIResponse> {
+  static async fetchHistoricalData(startYear: number = 2020): Promise<APIResponse> {
     const allResults: DrawResult[] = [];
     const currentYear = new Date().getFullYear();
     const currentMonth = new Date().getMonth() + 1;
 
     try {
-      // Récupérer les données pour chaque mois depuis janvier 2024
+      // Récupérer les données pour chaque mois depuis l'année de départ
+      console.log(`Récupération de l'historique depuis ${startYear}...`);
       for (let year = startYear; year <= currentYear; year++) {
         const startMonth = year === startYear ? 1 : 1;
         const endMonth = year === currentYear ? currentMonth : 12;

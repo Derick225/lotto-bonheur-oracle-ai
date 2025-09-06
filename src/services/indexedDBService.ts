@@ -204,8 +204,8 @@ export class IndexedDBService {
 
       const { LotteryAPIService } = await import('./lotteryAPI');
 
-      // Récupérer l'historique complet
-      const historicalResponse = await LotteryAPIService.fetchHistoricalData(2024);
+      // Récupérer l'historique complet depuis 2020
+      const historicalResponse = await LotteryAPIService.fetchHistoricalData(2020);
 
       if (!historicalResponse.success) {
         throw new Error(historicalResponse.message || 'Échec de la récupération historique');
