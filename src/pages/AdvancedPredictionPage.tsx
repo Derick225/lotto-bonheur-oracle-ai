@@ -114,19 +114,22 @@ export function AdvancedPredictionPage() {
         console.warn('ExtraTrees prediction failed:', error);
       }
 
-      // Prédiction RNN-LSTM (via PredictionService)
+      // Prédiction RNN-LSTM/GRU directe
       try {
-        const rnnPrediction = await PredictionService.generatePrediction({
-          drawName: drawName!,
-          algorithm: 'lstm'
-        });
+        const { RNNLSTMModel } = await import('@/services/rnnLstmModel');
+        const rnnModel = new RNNLSTMModel();
+        await rnnModel.train(results);
+        const rnnPredictions = rnnModel.predict(results, 5);
         modelPredictions.push({
           model: 'RNN-LSTM',
-          numbers: rnnPrediction.numbers.slice(0, 5),
-          confidence: rnnPrediction.confidence,
-          uncertainty: 0.2,
-          features: ['Séquences temporelles', 'Mémoire long terme', 'Cycles']
+          numbers: rnnPredictions.map(p => p.number),
+          confidence: 0.78,
+          uncertainty: 0.18,
+          features: ['Séquences temporelles', 'Patterns RNN', 'Cycles GRU']
         });
+        
+        // Nettoyage de la mémoire TensorFlow
+        rnnModel.dispose();
       } catch (error) {
         console.warn('RNN-LSTM prediction failed:', error);
       }

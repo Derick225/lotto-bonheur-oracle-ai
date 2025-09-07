@@ -135,7 +135,13 @@ export class PredictionService {
 
   private static async generateLSTMPredictions(drawResults: LotteryDrawResult[], features: any): Promise<MLPrediction[]> {
     try {
-      return await RNNLSTMModel.predict();
+      const model = new (await import('./rnnLstmModel')).RNNLSTMModel();
+      // Utiliser directement les DrawResult depuis l'API
+      await model.train(drawResults as any);
+      const predictions = model.predict(drawResults as any, 5);
+      model.dispose(); // Nettoyage mémoire TensorFlow
+      
+      return predictions;
     } catch (error) {
       console.error('LSTM prediction error:', error);
       return this.generateBasicPredictions(drawResults);
