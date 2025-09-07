@@ -15,6 +15,7 @@ import { IndexedDBService } from '@/services/indexedDBService';
 import { ArrowLeft, Download, Filter, Calendar, BarChart3, Loader2, FileText, Search, TrendingUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { DateRange } from 'react-day-picker';
 
 interface HistoryPageProps {}
 
@@ -23,7 +24,7 @@ export function HistoryPage() {
   const [results, setResults] = useState<DrawResult[]>([]);
   const [filteredResults, setFilteredResults] = useState<DrawResult[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
   const [numberInput, setNumberInput] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -87,10 +88,10 @@ export function HistoryPage() {
     let filtered = [...results];
     
     // Filtre par date
-    if (dateRange.from) {
+    if (dateRange?.from) {
       filtered = filtered.filter(result => new Date(result.date) >= dateRange.from!);
     }
-    if (dateRange.to) {
+    if (dateRange?.to) {
       filtered = filtered.filter(result => new Date(result.date) <= dateRange.to!);
     }
     
@@ -133,7 +134,7 @@ export function HistoryPage() {
   };
 
   const clearFilters = () => {
-    setDateRange({});
+    setDateRange(undefined);
     setSelectedNumbers([]);
     setNumberInput('');
     setSortOrder('desc');
@@ -254,7 +255,6 @@ export function HistoryPage() {
                 <DatePickerWithRange
                   date={dateRange}
                   onDateChange={setDateRange}
-                  placeholder="Sélectionner une période"
                 />
               </div>
               

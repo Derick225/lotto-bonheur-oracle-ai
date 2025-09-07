@@ -11,6 +11,7 @@ import { IndexedDBService, PredictionResult } from '@/services/indexedDBService'
 import { PredictionService } from '@/services/predictionService';
 import { LightGBMModel } from '@/services/lightGBMModel';
 import { ExtraTreesModel } from '@/services/extraTreesModel';
+import { DrawResult, LotteryAPIService } from '@/services/lotteryAPI';
 import { ArrowLeft, Brain, Zap, Target, TrendingUp, RefreshCw, Sparkles, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 
 interface ModelPrediction {
@@ -72,14 +73,23 @@ export function AdvancedPredictionPage() {
     try {
       setLoading(true);
       
+      // Récupérer les données historiques
+      const results = await LotteryAPIService.getDrawHistoricalResults(drawName, 500);
+      if (results.length === 0) {
+        console.warn('Aucune donnée historique disponible');
+        return;
+      }
+      
       const modelPredictions: ModelPrediction[] = [];
       
       // Prédiction LightGBM
       try {
-        const lightgbmNumbers = await LightGBMModel.predict(drawName);
+        const lightgbmModel = new LightGBMModel();
+        await lightgbmModel.train(results);
+        const lightgbmPredictions = lightgbmModel.predict(results, 5);
         modelPredictions.push({
           model: 'LightGBM',
-          numbers: lightgbmNumbers.slice(0, 5),
+          numbers: lightgbmPredictions.map(p => p.number),
           confidence: 0.75,
           uncertainty: 0.2,
           features: ['Fréquence', 'Écarts', 'Tendances']
@@ -90,10 +100,12 @@ export function AdvancedPredictionPage() {
 
       // Prédiction Extra Trees
       try {
-        const extraTreesNumbers = await ExtraTreesModel.predict(drawName);
+        const extraTreesModel = new ExtraTreesModel();
+        await extraTreesModel.train(results);
+        const extraTreesPredictions = extraTreesModel.predict(results, 5);
         modelPredictions.push({
           model: 'ExtraTrees',
-          numbers: extraTreesNumbers.slice(0, 5),
+          numbers: extraTreesPredictions.map(p => p.number),
           confidence: 0.72,
           uncertainty: 0.25,
           features: ['Interactions', 'Patterns', 'Co-occurrences']
